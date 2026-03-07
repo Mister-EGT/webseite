@@ -658,7 +658,7 @@
   "contextWindow": 131072,
   "inputCostPer1MTokens": 2,
   "outputCostPer1MTokens": 6,
-  "releaseDate": "2026-11-19"
+  "releaseDate": "2024-11-19"
 },
 {
   "id": "mistral_large_2407",
