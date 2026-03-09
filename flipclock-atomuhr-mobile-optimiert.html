@@ -3,767 +3,707 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FlipClock Atomzeit</title>
+  <title>Atomzeit Dashboard</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-
     :root {
-      --bg: #0d1117;
-      --card: #171f2d;
-      --card-top: #243044;
-      --card-bottom: #101826;
-      --line: rgba(255,255,255,0.08);
-      --text: #f8fafc;
-      --muted: #9fb0c8;
+      --bg: #07111f;
+      --panel: rgba(10, 18, 32, 0.92);
+      --panel-border: rgba(255,255,255,0.09);
+      --text: #f3f7ff;
+      --muted: #96aac9;
       --accent: #7dd3fc;
-      --accent-green: #34d399;
-      --accent-red: #fca5a5;
-      --digit-width: clamp(48px, calc((100vw - 10rem) / 6), 160px);
-      --digit-height: clamp(64px, calc(var(--digit-width) * 1.3), 208px);
-      --digit-font: clamp(2.2rem, calc(var(--digit-width) * 0.75), 6.5rem);
-      --radius: clamp(10px, 2vw, 18px);
-      --clock-gap: clamp(8px, 1.8vw, 20px);
-      --group-gap: clamp(4px, 1vw, 10px);
-      --label-size: clamp(0.62rem, 1.3vw, 0.8rem);
-      --app-px: clamp(14px, 2.8vw, 28px);
-      --app-py: clamp(18px, 3vw, 30px);
-      --transition-digit: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      --accent-2: #38bdf8;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --idle: #64748b;
+      --shadow: rgba(0, 0, 0, 0.4);
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
 
     html, body {
+      margin: 0;
       min-height: 100%;
-      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--text);
       background:
-        radial-gradient(ellipse at top center, rgba(125,211,252,0.07), transparent 50%),
-        linear-gradient(180deg, #0b1020, #090d14);
+        radial-gradient(circle at top, rgba(56, 189, 248, 0.13), transparent 26%),
+        linear-gradient(180deg, #08111f 0%, #040812 100%);
     }
 
     body {
       display: grid;
       place-items: center;
-      padding: clamp(10px, 3vw, 32px);
+      padding: 24px;
     }
 
-    /* ── App Shell ── */
     .app {
-      width: min(1100px, 100%);
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: clamp(18px, 3vw, 28px);
-      box-shadow: 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-      padding: var(--app-py) var(--app-px) calc(var(--app-py) - 4px);
-      backdrop-filter: blur(12px);
+      width: min(1120px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 28px;
+      box-shadow: 0 24px 60px var(--shadow);
       overflow: hidden;
+      backdrop-filter: blur(10px);
     }
 
-    /* ── Topbar ── */
-    .topbar {
+    .hero {
+      padding: 28px 28px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .hero-top {
       display: flex;
-      align-items: center;
+      gap: 16px;
       justify-content: space-between;
-      gap: 14px;
-      margin-bottom: clamp(16px, 3vw, 24px);
+      align-items: flex-start;
       flex-wrap: wrap;
     }
 
-    .title {
-      font-size: clamp(0.95rem, 1.4vw, 1.25rem);
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: var(--muted);
-      font-size: clamp(0.82rem, 1.6vw, 0.92rem);
-      max-width: 100%;
-      min-width: min(100%, 280px);
-      transition: border-color 0.4s, color 0.4s;
-    }
-
-    .status-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: #67e8f9;
-      box-shadow: 0 0 12px rgba(103,232,249,0.7);
-      flex: 0 0 auto;
-      transition: background 0.4s, box-shadow 0.4s;
-    }
-
-    .status.synced { border-color: rgba(52,211,153,0.3); }
-    .status.synced .status-dot { background: var(--accent-green); box-shadow: 0 0 14px rgba(52,211,153,0.8); }
-    .status.error  { border-color: rgba(252,165,165,0.3); color: var(--accent-red); }
-    .status.error  .status-dot { background: var(--accent-red); box-shadow: 0 0 14px rgba(252,165,165,0.8); }
-    .status.syncing .status-dot { animation: pulse-dot 1s ease-in-out infinite; }
-
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%      { opacity: 0.4; transform: scale(0.7); }
-    }
-
-    #statusText { min-width: 0; overflow-wrap: anywhere; }
-
-    /* ── API-Auswahl ── */
-    .api-bar {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: clamp(14px, 2.5vw, 22px);
-      flex-wrap: wrap;
-    }
-
-    .api-bar-label {
-      font-size: clamp(0.72rem, 1.3vw, 0.82rem);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      margin-right: 4px;
-    }
-
-    .api-btn {
-      padding: 7px 14px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      font-family: inherit;
-      font-size: clamp(0.72rem, 1.3vw, 0.82rem);
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      white-space: nowrap;
-    }
-
-    .api-btn:hover {
-      background: rgba(255,255,255,0.08);
-      color: var(--text);
-    }
-
-    .api-btn.active {
-      background: rgba(125,211,252,0.15);
-      border-color: rgba(125,211,252,0.4);
-      color: var(--accent);
-      box-shadow: 0 0 16px rgba(125,211,252,0.15);
-    }
-
-    /* ── Uhr ── */
-    .clock-wrap { width: 100%; overflow: hidden; }
-
-    .clock {
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      gap: var(--clock-gap);
-      padding: 8px 0 12px;
-    }
-
-    .time-group {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--group-gap);
-    }
-
-    .digit-col {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: clamp(6px, 1vw, 10px);
-    }
-
-    .digit-label {
-      font-size: var(--label-size);
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--muted);
-      text-align: center;
-      height: 1.1em;
+    .title-wrap h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2.4vw, 2.2rem);
       line-height: 1.1;
     }
 
-    /* ── Ziffern-Karte (statisch, kein Flip) ── */
-    .digit-card {
-      position: relative;
-      width: var(--digit-width);
-      height: var(--digit-height);
-      border-radius: var(--radius);
-      overflow: hidden;
-      filter: drop-shadow(0 14px 24px rgba(0,0,0,0.35));
-      flex: 0 0 auto;
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+      max-width: 66ch;
     }
 
-    .digit-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(255,255,255,0.07), transparent);
-      pointer-events: none;
-      z-index: 4;
-    }
-
-    .digit-top, .digit-bottom {
-      position: absolute;
-      left: 0; width: 100%;
-      display: flex;
-      justify-content: center;
-      font-variant-numeric: tabular-nums;
-      font-feature-settings: "tnum" 1;
-      font-weight: 800;
-      font-size: var(--digit-font);
-      color: var(--text);
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      border: 1px solid var(--line);
-      overflow: hidden;
-      transition: none;
-    }
-
-    .digit-top {
-      top: 0; height: 50%;
-      align-items: flex-end;
-      padding-bottom: calc(var(--digit-height) * 0.04);
-      background: linear-gradient(180deg, var(--card-top), var(--card));
-      border-radius: var(--radius) var(--radius) 0 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    }
-
-    .digit-bottom {
-      bottom: 0; height: 50%;
-      align-items: flex-start;
-      padding-top: calc(var(--digit-height) * 0.04);
-      background: linear-gradient(180deg, #172031, var(--card-bottom));
-      border-radius: 0 0 var(--radius) var(--radius);
-    }
-
-    /* Mittellinie */
-    .digit-card::after {
-      content: "";
-      position: absolute;
-      left: 0; right: 0; top: 50%;
-      height: 2px;
-      background: rgba(0,0,0,0.55);
-      box-shadow: 0 1px 0 rgba(255,255,255,0.06);
-      transform: translateY(-1px);
-      z-index: 5;
-    }
-
-    /* Scharniere */
-    .hinge, .hinge-r {
-      position: absolute;
-      top: 50%;
-      width: clamp(6px, 1vw, 10px);
-      height: clamp(6px, 1vw, 10px);
-      border-radius: 50%;
-      background: rgba(0,0,0,0.55);
-      border: 1px solid rgba(255,255,255,0.08);
-      z-index: 6;
-      transform: translateY(-50%);
-      box-shadow: inset 0 1px 1px rgba(255,255,255,0.08);
-    }
-    .hinge   { left:  clamp(4px, 0.7vw, 8px); }
-    .hinge-r { right: clamp(4px, 0.7vw, 8px); }
-
-    /* Ziffern-Wechsel-Animation */
-    .digit-card.changing .digit-top,
-    .digit-card.changing .digit-bottom {
-      animation: digit-pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    @keyframes digit-pop {
-      0%   { transform: scale(1); }
-      40%  { transform: scale(1.08); }
-      100% { transform: scale(1); }
-    }
-
-    /* Separator */
-    .separator {
-      font-size: clamp(1.6rem, 5vw, 5.2rem);
-      font-weight: 800;
-      line-height: 1;
-      color: rgba(255,255,255,0.7);
-      text-shadow: 0 4px 14px rgba(0,0,0,0.45);
-      user-select: none;
-      flex: 0 0 auto;
-      margin-top: calc(var(--label-size) + clamp(6px, 1vw, 10px) + var(--digit-height) * 0.28);
-      transition: opacity 0.3s ease;
-    }
-
-    .separator.dim { opacity: 0.18; }
-
-    /* ── Meta ── */
-    .meta {
-      margin-top: 14px;
-      display: grid;
-      gap: 10px;
-      justify-items: center;
-      text-align: center;
-    }
-
-    .meta-row {
+    .sync-pill {
       display: inline-flex;
       align-items: center;
-      gap: 12px;
-      padding: 11px 18px;
-      border-radius: 14px;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 999px;
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.08);
-      width: min(100%, 440px);
-      justify-content: center;
-      flex-wrap: wrap;
+      color: var(--text);
+      font-size: 0.96rem;
+      white-space: nowrap;
     }
 
-    .meta-label {
-      font-size: clamp(0.7rem, 1.3vw, 0.8rem);
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+      background: var(--idle);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.04);
+      flex: 0 0 auto;
+    }
+
+    .dot.ok { background: var(--ok); box-shadow: 0 0 12px rgba(74, 222, 128, 0.55); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 12px rgba(251, 191, 36, 0.55); }
+    .dot.err { background: var(--err); box-shadow: 0 0 12px rgba(248, 113, 113, 0.55); }
+    .dot.idle { background: var(--idle); }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.32fr 0.98fr;
+      gap: 0;
+    }
+
+    .clock-panel,
+    .side-panel {
+      padding: 28px;
+    }
+
+    .clock-panel {
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .clock-face {
+      border-radius: 24px;
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .time {
+      font-size: clamp(2.7rem, 10vw, 6.3rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      text-shadow: 0 10px 24px rgba(0,0,0,0.3);
+    }
+
+    .milliseconds {
+      margin-top: 14px;
+      color: var(--accent);
+      font-size: clamp(1.15rem, 3vw, 1.6rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+
+    .date-line,
+    .zone-line,
+    .offset-line {
+      margin-top: 12px;
       color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .meta-card,
+    .panel-card {
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .meta-label,
+    .panel-title,
+    .provider-name,
+    .select-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       font-weight: 700;
     }
 
-    .meta-val {
-      font-variant-numeric: tabular-nums;
-      font-feature-settings: "tnum" 1;
-      overflow-wrap: anywhere;
+    .meta-value {
+      margin-top: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.4;
     }
 
-    .ms-val {
-      font-size: clamp(1.15rem, 3vw, 1.9rem);
-      font-weight: 800;
-      color: var(--accent);
+    .stack {
+      display: grid;
+      gap: 14px;
     }
 
-    .date-val, .zone-val {
-      font-size: clamp(0.92rem, 2vw, 1.15rem);
+    .api-select {
+      margin-top: 10px;
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(7, 12, 24, 0.9);
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .helper {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .providers {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .provider-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .provider-row.active {
+      border-color: rgba(125,211,252,0.5);
+      background: rgba(125,211,252,0.08);
+    }
+
+    .provider-main {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .provider-status {
+      color: var(--text);
       font-weight: 600;
     }
 
-    /* ── Footer ── */
-    .footer {
-      margin-top: 18px;
-      text-align: center;
+    .provider-detail {
+      margin-top: 4px;
       color: var(--muted);
-      font-size: clamp(0.76rem, 1.6vw, 0.88rem);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .footer {
+      padding: 0 28px 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
       line-height: 1.6;
     }
 
-    .footer a { color: var(--accent); text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
-
-    /* ── Responsive ── */
-    @media (max-width: 860px) {
-      .topbar { justify-content: center; text-align: center; }
-      .status { justify-content: center; }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
     }
 
-    @media (max-width: 560px) {
-      :root {
-        --digit-width: clamp(42px, calc((100vw - 6.5rem) / 6), 64px);
-        --clock-gap: 6px;
-        --group-gap: 3px;
-      }
-      body { padding: 10px; }
-      .app { width: 100%; }
-      .topbar { gap: 10px; }
-      .title, .status { width: 100%; }
-      .status { min-width: 0; border-radius: 16px; }
-      .api-bar { gap: 5px; }
-      .api-btn { padding: 6px 10px; font-size: 0.7rem; }
-      .meta-row { width: 100%; padding: 10px 12px; }
+    .footer a:hover {
+      text-decoration: underline;
     }
 
-    @media (max-width: 400px) {
-      :root {
-        --digit-width: clamp(36px, calc((100vw - 5.4rem) / 6), 52px);
-        --label-size: 0.58rem;
-      }
-      .separator { font-size: 1.3rem; }
-      .hinge, .hinge-r { display: none; }
+    @media (max-width: 920px) {
+      .content { grid-template-columns: 1fr; }
+      .clock-panel { border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .meta-grid { grid-template-columns: 1fr; }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .digit-card.changing .digit-top,
-      .digit-card.changing .digit-bottom { animation: none !important; }
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .hero, .clock-panel, .side-panel, .footer { padding-left: 18px; padding-right: 18px; }
+      .clock-face { padding: 18px; }
+      .sync-pill { width: 100%; justify-content: center; white-space: normal; }
     }
   </style>
 </head>
 <body>
   <main class="app">
-
-    <!-- Topbar -->
-    <header class="topbar">
-      <div class="title">FlipClock Atomzeit</div>
-      <div class="status" id="status">
-        <span class="status-dot"></span>
-        <span id="statusText">Initialisiere…</span>
-      </div>
-    </header>
-
-    <!-- API-Auswahl -->
-    <nav class="api-bar" id="apiBar" aria-label="Zeitquellen-Auswahl">
-      <span class="api-bar-label">Quelle:</span>
-    </nav>
-
-    <!-- Uhr -->
-    <div class="clock-wrap">
-      <section class="clock" aria-label="Digitale Uhr">
-
-        <div class="time-group">
-          <div class="digit-col">
-            <span class="digit-label">Stunden</span>
-            <div class="digit-card" id="h1">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
-          <div class="digit-col">
-            <span class="digit-label">&nbsp;</span>
-            <div class="digit-card" id="h2">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
+    <section class="hero">
+      <div class="hero-top">
+        <div class="title-wrap">
+          <h1>Zeit API Dashboard</h1>
+          <p class="subtitle">Extrem sinnloses Dashboard für die Zeitanzeige</p>
         </div>
-
-        <span class="separator" aria-hidden="true">:</span>
-
-        <div class="time-group">
-          <div class="digit-col">
-            <span class="digit-label">Minuten</span>
-            <div class="digit-card" id="m1">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
-          <div class="digit-col">
-            <span class="digit-label">&nbsp;</span>
-            <div class="digit-card" id="m2">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
+        <div class="sync-pill" id="globalSyncPill">
+          <span class="dot idle" id="globalSyncDot"></span>
+          <span id="globalSyncText">Initialisiere Zeitquellen...</span>
         </div>
-
-        <span class="separator" aria-hidden="true">:</span>
-
-        <div class="time-group">
-          <div class="digit-col">
-            <span class="digit-label">Sekunden</span>
-            <div class="digit-card" id="s1">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
-          <div class="digit-col">
-            <span class="digit-label">&nbsp;</span>
-            <div class="digit-card" id="s2">
-              <div class="hinge"></div><div class="hinge-r"></div>
-              <div class="digit-top">0</div>
-              <div class="digit-bottom">0</div>
-            </div>
-          </div>
-        </div>
-
-      </section>
-    </div>
-
-    <!-- Meta -->
-    <section class="meta" aria-label="Zeitdetails">
-      <div class="meta-row">
-        <span class="meta-label">Millisekunden</span>
-        <span class="meta-val ms-val" id="msVal">000</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Datum</span>
-        <span class="meta-val date-val" id="dateVal">Lade…</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">Zeitzone</span>
-        <span class="meta-val zone-val" id="zoneVal">—</span>
       </div>
     </section>
 
-    <footer class="footer">
-      Zeit wird per API synchronisiert und dazwischen lokal interpoliert.<br>
-      Wähle oben deine bevorzugte Zeitquelle.
-    </footer>
+    <section class="content">
+      <div class="clock-panel">
+        <div class="clock-face">
+          <div class="time" id="timeText">00:00:00</div>
+          <div class="milliseconds" id="millisecondsText">000 ms</div>
+          <div class="date-line" id="dateText">Lade Datum...</div>
+          <div class="zone-line" id="zoneText">Zeitzone: Europe/Berlin</div>
+          <div class="offset-line" id="offsetText">UTC Offset: wird ermittelt...</div>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-card">
+            <div class="meta-label">Aktive Quelle</div>
+            <div class="meta-value" id="activeSourceText">Wird geladen...</div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Letzte aktive Sync</div>
+            <div class="meta-value" id="lastSuccessText">Noch keine</div>
+          </div>
+          <div class="meta-card">
+            <div class="meta-label">Letzter aktiver Versuch</div>
+            <div class="meta-value" id="lastAttemptText">Noch keiner</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <div class="stack">
+          <section class="panel-card">
+            <div class="select-label">Zeitquelle auswählen</div>
+            <select id="providerSelect" class="api-select" aria-label="Zeitquelle auswählen"></select>
+            <div class="helper">Beim Wechsel synchronisiert die ausgewählte Quelle sofort neu. Alle anderen Quellen bleiben sichtbar und werden im Hintergrund weiter geprüft.</div>
+          </section>
+
+          <section class="panel-card">
+            <div class="panel-title">Status der Zeitquellen</div>
+            <div class="providers" id="providersList"></div>
+          </section>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer">
+      Wie schon gesagt macht es keinen wirklichen Sinn.<br>
+      Quellenhinweis für Time.Now: <a href="https://time.now" target="_blank" rel="noopener noreferrer">World Time API by Time.Now</a>
+    </div>
   </main>
 
   <script>
-    /* ═══════════════════════════════════════════════
-       Konfiguration – API-Quellen
-       ═══════════════════════════════════════════════ */
-    const TIMEZONE = 'Europe/Berlin';
+    const timezone = 'Europe/Berlin';
 
-    const API_SOURCES = [
+    function toOffsetString(totalMinutes) {
+      const sign = totalMinutes >= 0 ? '+' : '-';
+      const abs = Math.abs(totalMinutes);
+      const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+      const mm = String(abs % 60).padStart(2, '0');
+      return `${sign}${hh}:${mm}`;
+    }
+
+    function browserTimePayload(label = 'Lokale Gerätezeit übernommen') {
+      const now = new Date();
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || timezone;
+      const offsetMinutes = -now.getTimezoneOffset();
+      return {
+        epochMs: now.getTime(),
+        timezone: tz,
+        utcOffset: toOffsetString(offsetMinutes),
+        rawLabel: label
+      };
+    }
+
+    function normalizeTimeResponse(data, fallbackLabel) {
+      if (!data || typeof data !== 'object') {
+        throw new Error('Leere oder ungültige Antwort');
+      }
+
+      const iso = data.datetime || data.dateTime || data.currentDateTime || data.utc_datetime;
+      let epochMs = Number.isFinite(data.epochMs) ? data.epochMs : null;
+
+      if (!epochMs && typeof data.unixtime === 'number') epochMs = data.unixtime * 1000;
+      if (!epochMs && typeof data.unixTime === 'number') epochMs = data.unixTime * 1000;
+      if (!epochMs && typeof data.currentFileTime === 'number') epochMs = Math.floor((data.currentFileTime / 10000) - 11644473600000);
+      if (!epochMs && iso) epochMs = new Date(iso).getTime();
+
+      if (!Number.isFinite(epochMs)) {
+        throw new Error('Zeitstempel konnte nicht gelesen werden');
+      }
+
+      let tz = data.timezone || data.timeZone || data.timeZoneName || timezone;
+      if (tz === 'local') tz = timezone;
+
+      let utcOffset = data.utc_offset || data.utcOffset || null;
+      if (!utcOffset && typeof data.gmtOffset === 'number') {
+        utcOffset = toOffsetString(Math.round(data.gmtOffset / 60));
+      }
+      if (!utcOffset && typeof data.raw_offset === 'number') {
+        utcOffset = toOffsetString(Math.round(data.raw_offset / 60));
+      }
+      if (!utcOffset && iso) {
+        const match = String(iso).match(/([+-]\d{2}:\d{2}|Z)$/);
+        utcOffset = match ? (match[1] === 'Z' ? '+00:00' : match[1]) : 'unbekannt';
+      }
+
+      return {
+        epochMs,
+        timezone: tz,
+        utcOffset: utcOffset || 'unbekannt',
+        rawLabel: fallbackLabel
+      };
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }
+
+    const providers = [
       {
-        id: 'worldtimeapi',
-        name: 'WorldTimeAPI',
-        url: `https://worldtimeapi.org/api/timezone/${TIMEZONE}`,
-        parse(data) {
-          if (!data.datetime) throw new Error('Kein datetime');
-          return { ms: new Date(data.datetime).getTime(), tz: data.timezone || TIMEZONE };
+        id: 'time-now-berlin',
+        label: 'Time.Now, Europe/Berlin',
+        description: 'Feste Berlin-Zeitzone über Time.Now.',
+        async fetchTime() {
+          const data = await fetchJson(`https://time.now/developer/api/timezone/${timezone}`);
+          return normalizeTimeResponse(data, 'Time.Now hat Europe/Berlin geliefert');
         }
       },
       {
-        id: 'timeapi',
-        name: 'TimeAPI.io',
-        url: `https://timeapi.io/api/time/current/zone?timeZone=${TIMEZONE}`,
-        parse(data) {
-          if (!data.dateTime) throw new Error('Kein dateTime');
-          // dateTime: "2025-01-15T14:30:45.123"  (ohne Offset)
-          // Wir nutzen die Felder direkt:
-          const d = new Date(`${data.dateTime}Z`);
-          // Da kein Offset geliefert wird, korrigieren wir über data.currentUtcOffset
-          // Format: "+01:00:00" oder "+02:00:00"
-          if (data.currentUtcOffset) {
-            const m = data.currentUtcOffset.match(/([+-])(\d{2}):(\d{2})/);
-            if (m) {
-              const offMin = (parseInt(m[2]) * 60 + parseInt(m[3])) * (m[1] === '+' ? 1 : -1);
-              d.setTime(d.getTime() - offMin * 60000);
-            }
-          }
-          return { ms: d.getTime(), tz: data.timeZone || TIMEZONE };
+        id: 'time-now-ip',
+        label: 'Time.Now, per IP-Erkennung',
+        description: 'Automatische Zeitzone über Time.Now und öffentliche IP.',
+        async fetchTime() {
+          const data = await fetchJson('https://time.now/developer/api/ip');
+          return normalizeTimeResponse(data, 'Time.Now hat per IP synchronisiert');
         }
       },
       {
-        id: 'open-meteo',
-        name: 'Open-Meteo',
-        url: `https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m&timezone=${TIMEZONE}&forecast_days=1`,
-        parse(data) {
-          // Open-Meteo liefert current.time = "2025-01-15T14:30" im angefragten TZ
-          if (!data.current || !data.current.time) throw new Error('Kein current.time');
-          const utcOff = data.utc_offset_seconds || 3600;
-          const localISO = data.current.time + ':00';   // Sekunden fehlen
-          const utcMs = new Date(localISO + 'Z').getTime() - utcOff * 1000;
-          return { ms: utcMs, tz: data.timezone || TIMEZONE };
+        id: 'worldtimeapi-berlin',
+        label: 'WorldTimeAPI, Europe/Berlin',
+        description: 'Feste Berlin-Zeitzone über WorldTimeAPI.',
+        async fetchTime() {
+          const data = await fetchJson(`https://worldtimeapi.org/api/timezone/${timezone}`);
+          return normalizeTimeResponse(data, 'WorldTimeAPI hat Europe/Berlin geliefert');
         }
       },
       {
-        id: 'local',
-        name: 'Lokale Uhr',
-        url: null,
-        parse() {
-          return { ms: Date.now(), tz: TIMEZONE };
+        id: 'timeapiio-berlin',
+        label: 'TimeAPI.io, Europe/Berlin',
+        description: 'Feste Berlin-Zeitzone über TimeAPI.io.',
+        async fetchTime() {
+          const data = await fetchJson(`https://timeapi.io/api/Time/current/zone?timeZone=${encodeURIComponent(timezone)}`);
+          return normalizeTimeResponse(data, 'TimeAPI.io hat Europe/Berlin geliefert');
+        }
+      },
+      {
+        id: 'browser-local',
+        label: 'Browser-Systemzeit',
+        description: 'Kein externer Request. Nutzt die lokale Gerätezeit als Fallback.',
+        async fetchTime() {
+          return browserTimePayload();
         }
       }
     ];
 
-    /* ═══════════════════════════════════════════════
-       DOM
-       ═══════════════════════════════════════════════ */
-    const $ = id => document.getElementById(id);
-    const $status     = $('status');
-    const $statusText = $('statusText');
-    const $dateVal    = $('dateVal');
-    const $zoneVal    = $('zoneVal');
-    const $msVal      = $('msVal');
-    const $apiBar     = $('apiBar');
-    const $seps       = document.querySelectorAll('.separator');
+    const state = {
+      activeProviderId: providers[0].id,
+      syncedBaseMs: Date.now(),
+      perfBaseMs: performance.now(),
+      currentTimezone: timezone,
+      currentUtcOffset: 'unbekannt',
+      activeSyncIntervalMs: 30000,
+      passiveSyncIntervalMs: 45000,
+      renderIntervalMs: 33,
+      renderTimer: null,
+      activeSyncTimer: null,
+      passiveSyncTimer: null,
+      providerStatus: Object.fromEntries(providers.map(provider => [provider.id, {
+        healthState: 'idle',
+        text: provider.id === providers[0].id ? 'Wird verbunden...' : 'Nicht verwendet',
+        detail: provider.description,
+        lastSuccess: null,
+        lastAttempt: null,
+        backgroundHealthy: false,
+        syncSource: null,
+        lastError: null
+      }]))
+    };
 
-    const digitCards = { h1: $('h1'), h2: $('h2'), m1: $('m1'), m2: $('m2'), s1: $('s1'), s2: $('s2') };
+    const timeText = document.getElementById('timeText');
+    const millisecondsText = document.getElementById('millisecondsText');
+    const dateText = document.getElementById('dateText');
+    const zoneText = document.getElementById('zoneText');
+    const offsetText = document.getElementById('offsetText');
+    const activeSourceText = document.getElementById('activeSourceText');
+    const lastSuccessText = document.getElementById('lastSuccessText');
+    const lastAttemptText = document.getElementById('lastAttemptText');
+    const providerSelect = document.getElementById('providerSelect');
+    const providersList = document.getElementById('providersList');
+    const globalSyncDot = document.getElementById('globalSyncDot');
+    const globalSyncText = document.getElementById('globalSyncText');
 
-    /* ═══════════════════════════════════════════════
-       State
-       ═══════════════════════════════════════════════ */
-    let offsetMs     = 0;
-    let activeTZ     = TIMEZONE;
-    let activeSource = API_SOURCES[0];
-    let lastDateKey  = '';
-    let lastSec      = -1;
-    let blinkOn      = true;
-
-    /* ═══════════════════════════════════════════════
-       Hilfsfunktionen
-       ═══════════════════════════════════════════════ */
-    const pad = (n, l = 2) => String(n).padStart(l, '0');
-
-    function timeParts(date, tz) {
-      const f = new Intl.DateTimeFormat('en-GB', {
-        timeZone: tz,
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hour12: false
-      });
-      const p = {};
-      for (const { type, value } of f.formatToParts(date)) p[type] = value;
-      return {
-        hh: pad(parseInt(p.hour)),
-        mm: pad(parseInt(p.minute)),
-        ss: pad(parseInt(p.second)),
-        ms: pad(date.getMilliseconds(), 3)
-      };
+    function pad(value, length = 2) {
+      return String(value).padStart(length, '0');
     }
 
-    function dateLong(date, tz) {
+    function formatDate(date, tz) {
       return new Intl.DateTimeFormat('de-DE', {
-        weekday: 'long', year: 'numeric', month: 'long', day: '2-digit', timeZone: tz
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: '2-digit',
+        timeZone: tz
       }).format(date);
     }
 
-    function setStatus(text, type = '') {
-      $statusText.textContent = text;
-      $status.className = 'status' + (type ? ' ' + type : '');
+    function formatDateTime(date) {
+      return new Intl.DateTimeFormat('de-DE', {
+        dateStyle: 'medium',
+        timeStyle: 'medium'
+      }).format(date);
     }
 
-    /* ═══════════════════════════════════════════════
-       Digit-Karten
-       ═══════════════════════════════════════════════ */
-    function setDigit(card, digit) {
-      if (card.dataset.cur === digit) return;
-      card.dataset.cur = digit;
-      card.querySelector('.digit-top').textContent    = digit;
-      card.querySelector('.digit-bottom').textContent  = digit;
-
-      // kurze Pop-Animation
-      card.classList.remove('changing');
-      void card.offsetWidth;
-      card.classList.add('changing');
+    function getEstimatedNow() {
+      return new Date(state.syncedBaseMs + (performance.now() - state.perfBaseMs));
     }
 
-    /* ═══════════════════════════════════════════════
-       Render-Loop
-       ═══════════════════════════════════════════════ */
-    function render() {
-      const now = new Date(Date.now() + offsetMs);
-      const t   = timeParts(now, activeTZ);
-
-      setDigit(digitCards.h1, t.hh[0]);
-      setDigit(digitCards.h2, t.hh[1]);
-      setDigit(digitCards.m1, t.mm[0]);
-      setDigit(digitCards.m2, t.mm[1]);
-      setDigit(digitCards.s1, t.ss[0]);
-      setDigit(digitCards.s2, t.ss[1]);
-
-      $msVal.textContent = t.ms;
-
-      const sec = parseInt(t.ss);
-      if (sec !== lastSec) {
-        lastSec  = sec;
-        blinkOn  = !blinkOn;
-        $seps.forEach(s => s.classList.toggle('dim', blinkOn));
-      }
-
-      const dk = t.hh + t.mm + activeTZ;
-      if (dk !== lastDateKey) {
-        $dateVal.textContent = dateLong(now, activeTZ);
-        lastDateKey = dk;
-      }
+    function renderClock() {
+      const now = getEstimatedNow();
+      timeText.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      millisecondsText.textContent = `${pad(now.getMilliseconds(), 3)} ms`;
+      dateText.textContent = formatDate(now, state.currentTimezone);
+      zoneText.textContent = `Zeitzone: ${state.currentTimezone}`;
+      offsetText.textContent = `UTC Offset: ${state.currentUtcOffset}`;
     }
 
-    /* ═══════════════════════════════════════════════
-       API Fetch
-       ═══════════════════════════════════════════════ */
-    async function fetchJSON(url, timeout = 6000) {
-      const ac = new AbortController();
-      const tm = setTimeout(() => ac.abort(), timeout);
-      try {
-        const r = await fetch(url, { signal: ac.signal, cache: 'no-store', headers: { Accept: 'application/json' } });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return await r.json();
-      } finally { clearTimeout(tm); }
+    function getProviderById(providerId) {
+      return providers.find(provider => provider.id === providerId);
     }
 
-    async function syncTime() {
-      const src = activeSource;
+    function updateDerivedProviderText(providerId) {
+      const provider = getProviderById(providerId);
+      const entry = state.providerStatus[providerId];
+      const isActive = providerId === state.activeProviderId;
 
-      // Lokale Uhr → kein Fetch nötig
-      if (!src.url) {
-        offsetMs = 0;
-        activeTZ = TIMEZONE;
-        $zoneVal.textContent = `${TIMEZONE} (lokal)`;
-        setStatus(`${src.name} – keine Synchronisation`, 'synced');
+      if (entry.healthState === 'warn') {
+        entry.text = isActive ? 'Synchronisiere gerade...' : 'Prüfe im Hintergrund...';
         return;
       }
 
-      setStatus(`Synchronisiere mit ${src.name}…`, 'syncing');
-      const t0 = Date.now();
+      if (isActive) {
+        if (entry.healthState === 'ok') entry.text = 'Synchronisiert';
+        else if (entry.healthState === 'err') entry.text = 'Fehler, lokale Uhr läuft weiter';
+        else entry.text = 'Wird verbunden...';
+        return;
+      }
+
+      if (entry.backgroundHealthy) {
+        entry.text = 'Nicht verwendet, im Hintergrund synchronisiert';
+      } else if (entry.healthState === 'err') {
+        entry.text = 'Nicht verwendet, Hintergrundfehler';
+      } else {
+        entry.text = 'Nicht verwendet';
+      }
+    }
+
+    function renderGlobalStatus() {
+      const entry = state.providerStatus[state.activeProviderId];
+      globalSyncDot.className = `dot ${entry.healthState}`;
+      globalSyncText.textContent = `${getProviderById(state.activeProviderId).label}: ${entry.text}`;
+      activeSourceText.textContent = getProviderById(state.activeProviderId).label;
+      lastSuccessText.textContent = entry.lastSuccess ? formatDateTime(entry.lastSuccess) : 'Noch keine';
+      lastAttemptText.textContent = entry.lastAttempt ? formatDateTime(entry.lastAttempt) : 'Noch keiner';
+    }
+
+    function renderProviders() {
+      providersList.innerHTML = providers.map(provider => {
+        const entry = state.providerStatus[provider.id];
+        const activeClass = provider.id === state.activeProviderId ? 'active' : '';
+        const lastSuccess = entry.lastSuccess ? `Letzte erfolgreiche Sync: ${formatDateTime(entry.lastSuccess)}` : 'Noch keine erfolgreiche Sync';
+        const lastAttempt = entry.lastAttempt ? `Letzter Versuch: ${formatDateTime(entry.lastAttempt)}` : 'Noch kein Versuch';
+        return `
+          <div class="provider-row ${activeClass}">
+            <span class="dot ${entry.healthState}"></span>
+            <div>
+              <div class="provider-main">
+                <span class="provider-name">${provider.label}</span>
+                <span class="provider-status">${entry.text}</span>
+              </div>
+              <div class="provider-detail">${entry.detail}<br>${lastSuccess}<br>${lastAttempt}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function refreshUi() {
+      providers.forEach(provider => updateDerivedProviderText(provider.id));
+      renderProviders();
+      renderGlobalStatus();
+    }
+
+    async function runProviderSync(providerId, mode = 'background') {
+      const provider = getProviderById(providerId);
+      const entry = state.providerStatus[providerId];
+      entry.lastAttempt = new Date();
+      entry.syncSource = mode;
+      entry.lastError = null;
+      entry.healthState = 'warn';
+      entry.detail = mode === 'active'
+        ? `${provider.description} Aktive Quelle wird neu synchronisiert.`
+        : `${provider.description} Läuft als Hintergrundprüfung.`;
+      refreshUi();
 
       try {
-        const data = await fetchJSON(src.url);
-        const { ms, tz } = src.parse(data);
-        const rtt = (Date.now() - t0) / 2;
-        offsetMs = ms + rtt - Date.now();
-        activeTZ = tz;
-        $zoneVal.textContent = activeTZ;
-        lastDateKey = '';
-        setStatus(`${src.name} – synchronisiert ✓`, 'synced');
-      } catch (e) {
-        console.warn(`${src.name} Fehler:`, e);
+        const result = await provider.fetchTime();
+        entry.lastSuccess = new Date();
+        entry.backgroundHealthy = true;
+        entry.healthState = 'ok';
+        entry.detail = `${result.rawLabel || provider.description}`;
 
-        // Fallback: lokale Uhr
-        offsetMs = 0;
-        activeTZ = TIMEZONE;
-        $zoneVal.textContent = `${TIMEZONE} (Fallback)`;
-        setStatus(`${src.name} nicht erreichbar – lokale Uhr`, 'error');
+        if (mode === 'active') {
+          state.syncedBaseMs = result.epochMs;
+          state.perfBaseMs = performance.now();
+          state.currentTimezone = result.timezone || timezone;
+          state.currentUtcOffset = result.utcOffset || 'unbekannt';
+          renderClock();
+        }
+      } catch (error) {
+        entry.lastError = error;
+        entry.backgroundHealthy = false;
+        entry.healthState = 'err';
+        entry.detail = `Fehlgeschlagen: ${error.message}`;
+
+        if (mode === 'active') {
+          const fallback = browserTimePayload('Aktive API fehlgeschlagen, lokale Gerätezeit übernommen');
+          state.syncedBaseMs = fallback.epochMs;
+          state.perfBaseMs = performance.now();
+          state.currentTimezone = fallback.timezone;
+          state.currentUtcOffset = fallback.utcOffset;
+          renderClock();
+        }
+
+        console.error(`Synchronisierung fehlgeschlagen für ${provider.label}:`, error);
       }
+
+      refreshUi();
     }
 
-    /* ═══════════════════════════════════════════════
-       API-Buttons erzeugen
-       ═══════════════════════════════════════════════ */
-    function buildAPIBar() {
-      API_SOURCES.forEach(src => {
-        const btn = document.createElement('button');
-        btn.className = 'api-btn' + (src.id === activeSource.id ? ' active' : '');
-        btn.textContent = src.name;
-        btn.dataset.id = src.id;
-        btn.addEventListener('click', () => selectSource(src.id));
-        $apiBar.appendChild(btn);
-      });
+    async function syncActiveProvider() {
+      await runProviderSync(state.activeProviderId, 'active');
     }
 
-    function selectSource(id) {
-      activeSource = API_SOURCES.find(s => s.id === id) || API_SOURCES[0];
-      document.querySelectorAll('.api-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.id === id);
-      });
-      syncTime();
+    async function syncPassiveProviders() {
+      const passiveIds = providers
+        .map(provider => provider.id)
+        .filter(providerId => providerId !== state.activeProviderId);
+
+      await Promise.allSettled(passiveIds.map(providerId => runProviderSync(providerId, 'background')));
     }
 
-    /* ═══════════════════════════════════════════════
-       Start
-       ═══════════════════════════════════════════════ */
+    function rebuildProviderSelect() {
+      providerSelect.innerHTML = providers.map(provider => `
+        <option value="${provider.id}">${provider.label}</option>
+      `).join('');
+      providerSelect.value = state.activeProviderId;
+    }
+
+    function restartTimers() {
+      if (state.activeSyncTimer) clearInterval(state.activeSyncTimer);
+      if (state.passiveSyncTimer) clearInterval(state.passiveSyncTimer);
+
+      state.activeSyncTimer = setInterval(syncActiveProvider, state.activeSyncIntervalMs);
+      state.passiveSyncTimer = setInterval(syncPassiveProviders, state.passiveSyncIntervalMs);
+    }
+
+    async function activateProvider(providerId) {
+      state.activeProviderId = providerId;
+      providerSelect.value = providerId;
+      refreshUi();
+      await syncActiveProvider();
+      await syncPassiveProviders();
+      restartTimers();
+    }
+
     async function start() {
-      buildAPIBar();
-      $zoneVal.textContent = TIMEZONE;
+      rebuildProviderSelect();
+      refreshUi();
+      renderClock();
 
-      // Initialisierung
-      Object.values(digitCards).forEach(c => { c.dataset.cur = ''; });
-      render();
+      providerSelect.addEventListener('change', async event => {
+        await activateProvider(event.target.value);
+      });
 
-      await syncTime();
-      render();
-
-      // Render-Loop via rAF
-      let last = 0;
-      function loop(ts) {
-        if (ts - last >= 40) { last = ts; render(); }
-        requestAnimationFrame(loop);
-      }
-      requestAnimationFrame(loop);
-
-      // Re-Sync alle 60 Sekunden
-      setInterval(syncTime, 60_000);
+      state.renderTimer = setInterval(renderClock, state.renderIntervalMs);
+      await activateProvider(state.activeProviderId);
     }
 
     start();
+
+    window.addEventListener('beforeunload', () => {
+      if (state.renderTimer) clearInterval(state.renderTimer);
+      if (state.activeSyncTimer) clearInterval(state.activeSyncTimer);
+      if (state.passiveSyncTimer) clearInterval(state.passiveSyncTimer);
+    });
   </script>
 </body>
 </html>
