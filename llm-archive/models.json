@@ -792,5 +792,36 @@
   "inputCostPer1MTokens": 1,
   "outputCostPer1MTokens": 1,
   "releaseDate": "2025-01-27"
+},
+  {
+  "id": "nemotron_3_super",
+  "name": "Nemotron 3 Super",
+  "developerName": "Nvidia",
+  "developerLogoUrl": "assets/Nvidia.svg",
+  "contextWindow": 262144,
+  "inputCostPer1MTokens": 0,
+  "outputCostPer1MTokens": 0,
+  "releaseDate": "2026-03-11"
+},
+{
+  "id": "seed_2.0_lite",
+  "name": "Seed-2.0-Lite",
+  "developerName": "ByteDance Seed",
+  "developerLogoUrl": "assets/ByteDance_Seed.png",
+  "contextWindow": 262144,
+  "inputCostPer1MTokens": 0.25,
+  "outputCostPer1MTokens": 2,
+  "releaseDate": "2026-03-10"
+},
+{
+  "id": "qwen3.5_9b",
+  "name": "Qwen3.5-9B",
+  "developerName": "Alibaba Cloud",
+  "developerLogoUrl": "assets/Alibaba_Cloud.svg",
+  "modelIconUrl": "assets/icons/Qwen.svg",
+  "contextWindow": 262144,
+  "inputCostPer1MTokens": 0.1,
+  "outputCostPer1MTokens": 0.15,
+  "releaseDate": "2026-03-10"
 }
 ]
