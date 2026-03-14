@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clash Control Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <section class="panel cut brand">
+        <div class="eyebrow">Clash of Clans</div>
+        <h1>Control Room</h1>
+        <p>Moderne, funktionale Oberfläche mit lokal gespeichertem API Token und robusterer Fehlerdiagnose.</p>
+        <div class="stripes"><span></span><span></span><span></span></div>
+      </section>
+
+      <section class="panel block">
+        <div class="eyebrow">Zugang</div>
+        <h2>API Token</h2>
+        <label for="tokenInput">Developer Token</label>
+        <div class="row split-row">
+          <input id="tokenInput" type="password" placeholder="Token hier einfügen" autocomplete="off">
+          <button id="toggleTokenBtn" class="btn ghost" type="button">Anzeigen</button>
+        </div>
+
+        <label for="apiBaseInput">API Basis URL</label>
+        <input id="apiBaseInput" type="text" placeholder="https://api.clashofclans.com/v1" autocomplete="off">
+
+        <div class="row compact action-grid">
+          <button id="saveTokenBtn" class="btn primary" type="button">Speichern</button>
+          <button id="validateTokenBtn" class="btn secondary" type="button">Prüfen</button>
+          <button id="clearTokenBtn" class="btn ghost" type="button">Löschen</button>
+        </div>
+
+        <small>Token und Basis URL werden im Browser per localStorage gespeichert.</small>
+        <small>Falls direkte Browser Anfragen scheitern, kannst du hier optional eine Proxy Basis URL eintragen.</small>
+
+        <div class="status-stack">
+          <div id="tokenStatus" class="pill neutral">Kein Token gespeichert</div>
+          <div id="connectionStatus" class="pill neutral">Verbindung ungeprüft</div>
+        </div>
+      </section>
+
+      <nav class="panel nav">
+        <button class="tab active" data-target="playerPanel" type="button">Spieler</button>
+        <button class="tab" data-target="clanPanel" type="button">Clan</button>
+        <button class="tab" data-target="warPanel" type="button">Krieg</button>
+        <button class="tab" data-target="rankingsPanel" type="button">Rankings</button>
+      </nav>
+
+      <section class="panel block note">
+        <div class="eyebrow">Bauweise</div>
+        <h2>Leichtgewichtig</h2>
+        <p>Kein Framework, kein generischer KI Look, keine Build Pipeline nötig und jetzt mit besserer Fehlerbehandlung.</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="panel cut hero">
+        <div>
+          <div class="eyebrow">Dashboard</div>
+          <h2>Mehr Kartenraum als Standard Dashboard.</h2>
+          <p>Spieler, Clans, Kriege und Leaderboards in einer Oberfläche, dazu Rohdaten zum Aufklappen.</p>
+        </div>
+        <div class="hero-grid" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      </header>
+
+      <div id="globalMessage" class="message hidden"></div>
+
+      <section id="playerPanel" class="content active">
+        <div class="panel block">
+          <div class="toolbar">
+            <div><div class="eyebrow">Spielerprofil</div><h3>Spieler abrufen</h3></div>
+            <form id="playerForm" class="row formrow"><input id="playerTagInput" type="text" placeholder="#PLAYER"><button class="btn primary" type="submit">Laden</button></form>
+          </div>
+          <div id="playerSummary" class="grid empty">Noch keine Spielerdaten geladen.</div>
+          <div id="playerDetails"></div>
+          <details class="json"><summary>Rohdaten anzeigen</summary><pre id="playerJson">{}</pre></details>
+        </div>
+      </section>
+
+      <section id="clanPanel" class="content">
+        <div class="panel block">
+          <div class="toolbar">
+            <div><div class="eyebrow">Clanprofil</div><h3>Clan und Mitglieder</h3></div>
+            <form id="clanForm" class="row formrow"><input id="clanTagInput" type="text" placeholder="#CLAN"><button class="btn primary" type="submit">Laden</button></form>
+          </div>
+          <div id="clanSummary" class="grid empty">Noch keine Claninfos geladen.</div>
+          <div id="clanMembers"></div>
+          <details class="json"><summary>Clan Rohdaten</summary><pre id="clanJson">{}</pre></details>
+          <details class="json"><summary>Mitglieder Rohdaten</summary><pre id="membersJson">[]</pre></details>
+        </div>
+      </section>
+
+      <section id="warPanel" class="content">
+        <div class="panel block">
+          <div class="toolbar">
+            <div><div class="eyebrow">Kriegszentrale</div><h3>Current War und CWL Gruppe</h3></div>
+            <form id="warForm" class="row formrow"><input id="warClanTagInput" type="text" placeholder="#CLAN"><button class="btn primary" type="submit">Laden</button></form>
+          </div>
+          <div id="warSummary" class="grid empty">Noch keine Kriegsdaten geladen.</div>
+          <div id="warRoster"></div>
+          <details class="json"><summary>Current War Rohdaten</summary><pre id="warJson">{}</pre></details>
+          <details class="json"><summary>CWL Gruppe Rohdaten</summary><pre id="leagueGroupJson">{}</pre></details>
+        </div>
+      </section>
+
+      <section id="rankingsPanel" class="content">
+        <div class="panel block">
+          <div class="toolbar">
+            <div><div class="eyebrow">Leaderboards</div><h3>Standorte und Rankings</h3></div>
+            <div class="row formrow">
+              <select id="locationSelect"></select>
+              <button id="loadRankingsBtn" class="btn primary" type="button">Laden</button>
+            </div>
+          </div>
+          <div class="dual">
+            <section class="sub"><h4>Spieler Ranking</h4><div id="playerRankings" class="empty">Noch keine Rankingdaten geladen.</div></section>
+            <section class="sub"><h4>Clan Ranking</h4><div id="clanRankings" class="empty">Noch keine Rankingdaten geladen.</div></section>
+          </div>
+          <details class="json"><summary>Locations Rohdaten</summary><pre id="locationsJson">[]</pre></details>
+          <details class="json"><summary>Player Rankings Rohdaten</summary><pre id="playerRankingsJson">[]</pre></details>
+          <details class="json"><summary>Clan Rankings Rohdaten</summary><pre id="clanRankingsJson">[]</pre></details>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
