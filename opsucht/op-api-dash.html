@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPSUCHT Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0b0f; --panel:#111318; --card:#161820; --card2:#1c1f29;
+  --raise:#1e2130; --brd:#252836; --brd2:#1a1d28;
+  --gold:#e8a230; --gold2:#c47f18; --amber:#f59e0b;
+  --green:#22c55e; --red:#ef4444; --blue:#60a5fa;
+  --t1:#f0f2f8; --t2:#8b90a8; --t3:#545870;
+  --r:10px; --rl:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,select{font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t1);background:var(--card);border:1px solid var(--brd);border-radius:var(--r);padding:8px 12px;outline:none;transition:border-color .2s;width:100%}
+input::placeholder{color:var(--t3)}
+input:focus,select:focus{border-color:var(--gold2)}
+select option{background:var(--card)}
+
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--raise) 50%,var(--card) 75%);background-size:800px 100%;animation:shimmer 1.5s infinite;border-radius:var(--r)}
+
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--raise);border:1px solid var(--brd);color:var(--t1);font-size:13px;padding:10px 16px;border-radius:var(--r);z-index:9999;animation:fadein .2s ease;pointer-events:none}
+.toast-ok{border-color:rgba(34,197,94,.4);color:var(--green)}
+.toast-err{border-color:rgba(239,68,68,.4);color:var(--red)}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.bg{background:rgba(232,162,48,.12);color:var(--gold);border:1px solid rgba(232,162,48,.25)}
+.bb{background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.2)}
+.bm{background:rgba(84,88,112,.15);color:var(--t2);border:1px solid var(--brd2)}
+.bgrn{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.bred{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+
+.card{background:var(--card);border:1px solid var(--brd);border-radius:var(--rl);padding:16px;transition:border-color .2s,background .2s}
+.card:hover{border-color:rgba(232,162,48,.2);background:var(--card2)}
+.click{cursor:pointer}
+.click:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--brd);border-radius:var(--rl);width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+@media(max-width:640px){.overlay{align-items:flex-end;padding:0}.modal{border-radius:16px 16px 0 0;max-height:92vh}}
+
+.tabs{display:flex;background:var(--panel);border:1px solid var(--brd);border-radius:var(--r);padding:4px;gap:2px}
+.tab{flex:1;padding:8px 16px;border-radius:7px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--t2);transition:all .2s}
+.tab.on{background:var(--gold);color:#0a0b0f}
+.tab:not(.on):hover{color:var(--t1);background:var(--raise)}
+
+.goldline{height:1px;background:linear-gradient(90deg,transparent,var(--gold2),transparent)}
+
+.codebox{background:#0d0f16;border:1px solid var(--brd2);border-radius:var(--r);padding:12px;font-family:'DM Mono',monospace;font-size:12px;color:#a8b4d8;overflow:auto;white-space:pre;max-height:400px;line-height:1.7}
+
+.stat{background:var(--card);border:1px solid var(--brd);border-radius:var(--rl);padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.stat-v{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--gold);line-height:1}
+.stat-l{font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}
+
+.warn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--amber);display:flex;gap:8px;flex-wrap:wrap}
+
+/* Diagnosis panel */
+.diag{background:#0d0f16;border:1px solid var(--brd2);border-radius:var(--rl);padding:20px;display:flex;flex-direction:column;gap:12px}
+.diag-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);border:1px solid var(--brd2);border-radius:var(--r);font-size:13px}
+.diag-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:var(--green)}
+.dot-err{background:var(--red)}
+.dot-pend{background:var(--t3);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.ag{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+@media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr}.ig,.ag{grid-template-columns:1fr}}
+
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 14px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--brd);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--brd2);font-size:13px;color:var(--t2)}
+tr:hover td{background:var(--raise);color:var(--t1)}
+td:first-child{color:var(--t1);font-weight:500}
+.tw{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--brd);background:var(--card)}
+
+.hero{background:radial-gradient(ellipse 60% 40% at 50% -10%,rgba(232,162,48,.08) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 80% 50%,rgba(34,197,94,.04) 0%,transparent 60%),var(--panel);border-bottom:1px solid var(--brd)}
+.fbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px;background:var(--panel);border:1px solid var(--brd);border-radius:var(--rl)}
+.fbar input,.fbar select{flex:1;min-width:140px;max-width:280px}
+.vtog{display:flex;background:var(--raise);border:1px solid var(--brd);border-radius:8px;overflow:hidden}
+.vtog button{padding:6px 12px;font-size:13px;color:var(--t3);transition:all .15s}
+.vtog button.on{background:var(--gold);color:#0a0b0f}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .2s}
+.btn-g{background:var(--gold);color:#0a0b0f}
+.btn-g:hover:not(:disabled){background:var(--amber)}
+.btn-o{background:var(--raise);color:var(--t2);border:1px solid var(--brd)}
+.btn-o:hover:not(:disabled){color:var(--t1);border-color:var(--gold2)}
+.btn-r{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.sm{padding:5px 12px;font-size:12px}
+
+.sh{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.st{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--t1)}
+.pill{background:var(--raise);color:var(--t3);border:1px solid var(--brd);padding:2px 8px;border-radius:20px;font-size:12px;font-family:'DM Mono',monospace}
+
+.pag{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pb{min-width:32px;height:32px;padding:0 6px;border-radius:6px;font-size:13px;color:var(--t2);background:var(--card);border:1px solid var(--brd);transition:all .15s;display:flex;align-items:center;justify-content:center}
+.pb:hover:not(:disabled){border-color:var(--gold2);color:var(--t1)}
+.pb.on{background:var(--gold);color:#0a0b0f;border-color:var(--gold);font-weight:700}
+.pe{color:var(--t3);padding:0 2px;font-size:13px;user-select:none}
+
+.kvg{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.kv{background:var(--bg);border:1px solid var(--brd2);border-radius:8px;padding:8px 12px}
+.kl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.kv2{font-size:13px;color:var(--t1);word-break:break-all}
+.mono{font-family:'DM Mono',monospace}
+.gold{color:var(--gold)}
+.grn{color:var(--green)}
+.amb{color:var(--amber)}
+.dim{color:var(--t3)}
+
+/* Proxy config box */
+.proxybox{background:var(--card);border:1px solid var(--brd);border-radius:var(--rl);padding:16px;display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROXY LAYER
+// Multiple public CORS proxies tried in order. First one that works wins.
+// The user can also set a custom proxy in the settings panel.
+// ─────────────────────────────────────────────────────────────────────────────
+const API_BASE = 'https://api.opsucht.net';
+
+const DEFAULT_PROXIES = [
+  { name: 'corsproxy.io',          url: (u) => 'https://corsproxy.io/?' + encodeURIComponent(u) },
+  { name: 'api.allorigins.win',    url: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
+  { name: 'thingproxy.freeboard',  url: (u) => 'https://thingproxy.freeboard.io/fetch/' + u },
+];
+
+// Shared state: which proxy index is currently working (-1 = not found yet)
+let _workingProxyIdx = -1;
+let _customProxy = null; // { name, url: (u)=>string }
+
+function getProxies() {
+  if (_customProxy) return [_customProxy, ...DEFAULT_PROXIES];
+  return DEFAULT_PROXIES;
+}
+
+async function fetchWithProxy(path, signal, proxyIdx) {
+  const fullUrl = API_BASE + path;
+  const proxies = getProxies();
+  const proxy   = proxies[proxyIdx];
+  const proxyUrl = proxy.url(fullUrl);
+
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  if (signal) signal.addEventListener('abort', () => ctrl.abort());
+
+  try {
+    const res = await fetch(proxyUrl, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    return data;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+// Try proxies in order, cache the working one
+async function apiFetch(path, signal) {
+  const proxies = getProxies();
+
+  // If we already know a working proxy, try it first
+  if (_workingProxyIdx >= 0 && _workingProxyIdx < proxies.length) {
+    try {
+      return await fetchWithProxy(path, signal, _workingProxyIdx);
+    } catch (e) {
+      if (signal && signal.aborted) throw e;
+      // Working proxy failed, reset and try all
+      _workingProxyIdx = -1;
+    }
+  }
+
+  // Try all proxies in order
+  let lastErr;
+  for (let i = 0; i < proxies.length; i++) {
+    try {
+      const data = await fetchWithProxy(path, signal, i);
+      _workingProxyIdx = i; // Cache the working proxy
+      return data;
+    } catch (e) {
+      if (signal && signal.aborted) throw e;
+      lastErr = e;
+    }
+  }
+  throw new Error('Alle Proxies fehlgeschlagen: ' + (lastErr ? lastErr.message : 'Unbekannt'));
+}
+
+const API = {
+  mCats:   (s) => apiFetch('/market/categories', s),
+  mItems:  (s) => apiFetch('/market/items', s),
+  mPrices: (s) => apiFetch('/market/prices', s),
+  mPrice:  (m,s) => apiFetch('/market/price/'  + encodeURIComponent(m), s),
+  mHist:   (m,s) => apiFetch('/market/history/' + encodeURIComponent(m), s),
+  aCats:   (s) => apiFetch('/auctions/categories', s),
+  aActive: (cat,s) => apiFetch('/auctions/active' + (cat ? '?category=' + encodeURIComponent(cat) : ''), s),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NORMALISATION
+// ─────────────────────────────────────────────────────────────────────────────
+function toArr(d) {
+  if (!d) return [];
+  if (Array.isArray(d)) return d;
+  for (const v of Object.values(d)) if (Array.isArray(v)) return v;
+  if (typeof d === 'object') return Object.entries(d).map(([k,v]) =>
+    typeof v==='object' && v!==null ? {...v,_k:k} : {value:v,_k:k}
+  );
+  return [];
+}
+
+function gf(o,...keys) {
+  for (const k of keys) { const v=o?.[k]; if(v!=null && v!=='') return v; }
+}
+
+function gn(o, paths) {
+  if (!o || !paths) return undefined;
+  for (const p of paths) {
+    let c = o;
+    for (const k of p) { if(c==null){c=undefined;break;} c=c[k]; }
+    const n = parseFloat(c);
+    if (!isNaN(n)) return n;
+  }
+}
+
+const BUY  = [['buy','price'],['buy','value'],['buy'],['buyPrice'],['buy_price'],['price','buy'],['price'],['value']];
+const SELL = [['sell','price'],['sell','value'],['sell'],['sellPrice'],['sell_price']];
+
+function normItem(raw, i) {
+  const id  = String(gf(raw,'id','material','_k','name') ?? i);
+  const lbl = String(gf(raw,'name','displayName','display_name','label','material','_k') ?? id);
+  const mat = String(gf(raw,'material','id','_k') ?? id);
+  const cat = gf(raw,'category','type','group');
+  return { id, lbl, mat, cat: cat?String(cat):undefined, raw,
+    _s: [lbl, mat, cat||''].join(' ').toLowerCase() };
+}
+
+function normAuc(raw, i) {
+  const id  = String(gf(raw,'id','auctionId','uuid') ?? i);
+  const nm  = String(gf(raw,'name','item','title','material','itemName','item_name','displayName') ?? 'Unbekannt');
+  const cat = gf(raw,'category','type');
+  const pr  = gn(raw,[['price'],['bid'],['currentBid'],['current_bid'],['startPrice'],['start_price'],['highestBid']]);
+  const sl  = gf(raw,'seller','owner','player','creator','auctioneer');
+  const et  = gf(raw,'expiresAt','endAt','endTime','end_time','expires','timeLeft','time_left','endsAt');
+  const qty = gf(raw,'quantity','amount','count','stack','qty');
+  return { id, nm, cat:cat?String(cat):undefined, pr, sl, et, qty, raw,
+    _s: [nm, cat||'', sl||''].join(' ').toLowerCase() };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORMAT
+// ─────────────────────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (n==null) return '—';
+  const v = parseFloat(n);
+  if (isNaN(v)) return String(n);
+  if (v>=1e6) return (v/1e6).toFixed(2)+'M';
+  if (v>=1e3) return (v/1e3).toFixed(1)+'K';
+  return v.toLocaleString('de-DE',{maximumFractionDigits:2});
+}
+
+function fmtKey(k) {
+  return k.replace(/_/g,' ').replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase()).trim();
+}
+
+function fmtTime(v) {
+  if (!v) return '—';
+  let d;
+  if (typeof v==='number') d=new Date(v>1e12?v:v*1000);
+  else if (typeof v==='string') d=new Date(v);
+  if (d&&!isNaN(d)) {
+    const diff=d-Date.now();
+    if (diff>0) { const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000); return h>0?h+'h '+m+'m':m+'m'; }
+    return d.toLocaleString('de-DE');
+  }
+  return String(v);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOAST + CLIPBOARD
+// ─────────────────────────────────────────────────────────────────────────────
+function useToast() {
+  const [t,setT]=useState(null); const ref=useRef(null);
+  function show(msg,type){ setT({msg,type:type||'ok'}); clearTimeout(ref.current); ref.current=setTimeout(()=>setT(null),2400); }
+  return [t,show];
+}
+
+function copyText(text,show) {
+  const ok=()=>show&&show('Kopiert','ok'), err=()=>show&&show('Fehler','err');
+  if (navigator.clipboard){ navigator.clipboard.writeText(text).then(ok).catch(err); return; }
+  try { const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); ok(); } catch(e){ err(); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGINATION
+// ─────────────────────────────────────────────────────────────────────────────
+function pageList(cur,tot) {
+  if (tot<=7) return Array.from({length:tot},(_,i)=>i+1);
+  const s=new Set([1,tot]);
+  for(let i=Math.max(2,cur-2);i<=Math.min(tot-1,cur+2);i++) s.add(i);
+  const a=[...s].sort((a,b)=>a-b); const out=[]; let prev=0;
+  for(const p of a){ if(p-prev>1) out.push('...'); out.push(p); prev=p; }
+  return out;
+}
+
+function Pager({page,total,set}) {
+  if (total<=1) return null;
+  const pages=pageList(page,total);
+  return (
+    <div className="pag">
+      <button className="pb" disabled={page===1} onClick={()=>set(page-1)}>&#8249;</button>
+      {pages.map((p,i)=> p==='...'
+        ? <span key={'e'+i} className="pe">&#8230;</span>
+        : <button key={p} className={'pb'+(p===page?' on':'')} onClick={()=>set(p)}>{p}</button>
+      )}
+      <button className="pb" disabled={page===total} onClick={()=>set(page+1)}>&#8250;</button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED UI
+// ─────────────────────────────────────────────────────────────────────────────
+function Skel({rows=6}) {
+  return <div className="ig">{Array.from({length:rows}).map((_,i)=><div key={i} className="skeleton" style={{height:100,opacity:1-i*.06}}/>)}</div>;
+}
+
+function ErrBox({msg,retry}) {
+  return (
+    <div style={{textAlign:'center',padding:'48px 24px'}}>
+      <div style={{fontSize:32,marginBottom:12,color:'var(--red)'}}>&#9888;</div>
+      <div style={{fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700,marginBottom:8}}>Fehler beim Laden</div>
+      <div style={{color:'var(--t3)',maxWidth:420,margin:'0 auto 24px',fontSize:13,lineHeight:1.7}}>{msg}</div>
+      {retry && <button className="btn btn-g" onClick={retry}>&#8635; Erneut versuchen</button>}
+    </div>
+  );
+}
+
+function Empty({text}) {
+  return <div style={{textAlign:'center',padding:'48px 24px',color:'var(--t3)'}}><div style={{fontSize:26,marginBottom:8}}>&#9672;</div><div style={{fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:600}}>{text||'Keine Eintraege'}</div></div>;
+}
+
+function Warn({errs}) {
+  if (!errs||!errs.length) return null;
+  return <div className="warn"><span>&#9888;</span><span><b>Teilfehler:</b> {errs.join(' · ')}</span></div>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAW JSON VIEWER
+// ─────────────────────────────────────────────────────────────────────────────
+function Raw({data,label}) {
+  const [open,setOpen]=useState(false);
+  const [t,show]=useToast();
+  const json=useMemo(()=>data?JSON.stringify(data,null,2):'', [data]);
+  const display=json.length>10000?json.slice(0,10000)+'\n\n...[gekuerzt]':json;
+  function dl(){ const b=new Blob([json],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=(label||'data').replace(/\s+/g,'_')+'.json'; a.click(); URL.revokeObjectURL(u); }
+  return (
+    <div style={{marginTop:12}}>
+      {t&&<div className={'toast toast-'+t.type}>{t.msg}</div>}
+      <button className="btn btn-o sm" onClick={()=>setOpen(o=>!o)}>
+        {open?'▲ Rohdaten schliessen':'▼ Rohdaten anzeigen'}
+        {label&&<span style={{color:'var(--t3)',marginLeft:6}}>({label})</span>}
+      </button>
+      {open&&<div style={{marginTop:8,position:'relative'}}>
+        <div style={{position:'absolute',top:8,right:8,display:'flex',gap:6,zIndex:1}}>
+          <button className="btn btn-o sm" onClick={()=>copyText(json,show)}>&#8664; Kopieren</button>
+          <button className="btn btn-o sm" onClick={dl}>&#8615; JSON</button>
+        </div>
+        <div className="codebox">{display}</div>
+      </div>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KEY-VALUE GRID
+// ─────────────────────────────────────────────────────────────────────────────
+function KV({obj}) {
+  const skip=new Set(['raw','_k','_s']);
+  const entries=Object.entries(obj||{}).filter(([k])=>!skip.has(k));
+  if (!entries.length) return <div className="dim" style={{fontSize:13}}>Keine Felder</div>;
+  return (
+    <div className="kvg">
+      {entries.map(([k,v])=>(
+        <div key={k} className="kv">
+          <div className="kl">{fmtKey(k)}</div>
+          <div className="kv2 mono" style={{fontSize:12}}>
+            {v==null?<span className="dim">—</span>
+              :typeof v==='object'?<span style={{fontSize:11,color:'var(--t3)'}}>{JSON.stringify(v).slice(0,60)}</span>
+              :String(v)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPARKLINE (custom SVG, no external lib)
+// ─────────────────────────────────────────────────────────────────────────────
+function Sparkline({data}) {
+  const pts=useMemo(()=>{
+    const arr=toArr(data); if(!arr.length) return null;
+    const mapped=arr.map((item,i)=>{
+      const ts=gf(item,'timestamp','time','date','createdAt','t','ts','at');
+      const val=gn(item,[['price'],['value'],['buy'],['sell'],['avg'],['average'],['p'],['buyPrice']]);
+      if(val==null) return null;
+      let lbl=String(i+1);
+      if(ts){ const d=new Date(typeof ts==='number'&&ts<1e12?ts*1000:ts); if(!isNaN(d)) lbl=d.toLocaleDateString('de-DE'); }
+      return {lbl,val};
+    }).filter(Boolean);
+    return mapped.length>=2?mapped:null;
+  },[data]);
+
+  if (!pts) return (
+    <div>
+      <div style={{color:'var(--t3)',fontSize:13,marginBottom:8}}>&#9432; Preisverlauf nicht als Zeitreihe erkennbar</div>
+      <Raw data={data} label="History-Rohdaten"/>
+    </div>
+  );
+
+  const W=560,H=150,PX=10,PY=10;
+  const vals=pts.map(p=>p.val);
+  const minV=Math.min(...vals),maxV=Math.max(...vals),range=maxV-minV||1;
+  const xs=pts.map((_,i)=>PX+i*(W-2*PX)/(pts.length-1));
+  const ys=vals.map(v=>PY+(1-(v-minV)/range)*(H-2*PY));
+  const line=xs.map((x,i)=>(i?'L':'M')+x.toFixed(1)+','+ys[i].toFixed(1)).join(' ');
+  const area=line+' L'+xs[xs.length-1].toFixed(1)+','+(H-PY)+' L'+PX.toFixed(1)+','+(H-PY)+' Z';
+
+  return (
+    <div role="img" aria-label="Preisverlauf">
+      <svg viewBox={'0 0 '+W+' '+H} style={{width:'100%',height:H,display:'block'}}>
+        <defs>
+          <linearGradient id="grd" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#e8a230" stopOpacity="0.3"/>
+            <stop offset="95%" stopColor="#e8a230" stopOpacity="0.02"/>
+          </linearGradient>
+        </defs>
+        <path d={area} fill="url(#grd)"/>
+        <path d={line} fill="none" stroke="#e8a230" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={xs[0]} cy={ys[0]} r="4" fill="#e8a230"/>
+        <circle cx={xs[xs.length-1]} cy={ys[xs.length-1]} r="4" fill="#e8a230"/>
+        <text x={xs[0]} y={H-1} fontSize="10" fill="#545870" textAnchor="start">{pts[0].lbl}</text>
+        <text x={xs[xs.length-1]} y={H-1} fontSize="10" fill="#545870" textAnchor="end">{pts[pts.length-1].lbl}</text>
+        <text x={xs[0]} y={ys[0]>H/2?ys[0]-8:ys[0]+14} fontSize="11" fill="#8b90a8" textAnchor="start">{fmt(vals[0])}</text>
+        <text x={xs[xs.length-1]} y={ys[xs.length-1]>H/2?ys[xs.length-1]-8:ys[xs.length-1]+14} fontSize="11" fill="#8b90a8" textAnchor="end">{fmt(vals[vals.length-1])}</text>
+      </svg>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function Modal({onClose,label,children}) {
+  useEffect(()=>{ const fn=e=>{if(e.key==='Escape')onClose();}; document.addEventListener('keydown',fn); return ()=>document.removeEventListener('keydown',fn); },[onClose]);
+  return (
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()} role="dialog" aria-modal="true" aria-label={label}>
+      <div className="modal">{children}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIAGNOSIS PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function DiagPanel({onClose}) {
+  const proxies = getProxies();
+  const tests = [
+    { label: 'market/categories', path: '/market/categories' },
+    { label: 'market/items',      path: '/market/items' },
+    { label: 'market/prices',     path: '/market/prices' },
+    { label: 'auctions/categories', path: '/auctions/categories' },
+    { label: 'auctions/active',   path: '/auctions/active' },
+  ];
+
+  const [results, setResults] = useState({});
+  const [running, setRunning] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
+  const [customSet, setCustomSet] = useState(false);
+
+  async function runDiag() {
+    setRunning(true);
+    setResults({});
+    const r = {};
+    for (const t of tests) {
+      r[t.path] = { status: 'pending', proxy: null, error: null };
+      setResults({...r});
+      const proxies = getProxies();
+      let found = false;
+      for (let i = 0; i < proxies.length; i++) {
+        try {
+          const data = await fetchWithProxy(t.path, null, i);
+          r[t.path] = { status: 'ok', proxy: proxies[i].name, data };
+          found = true;
+          break;
+        } catch(e) {
+          r[t.path] = { status: 'trying', proxy: proxies[i].name, error: e.message };
+          setResults({...r});
+        }
+      }
+      if (!found) r[t.path] = { status: 'err', error: r[t.path].error };
+      setResults({...r});
+    }
+    setRunning(false);
+  }
+
+  function applyCustomProxy() {
+    if (!customUrl.trim()) return;
+    _customProxy = {
+      name: 'Benutzerdefiniert',
+      url: (u) => customUrl.trim().replace('{url}', encodeURIComponent(u))
+    };
+    _workingProxyIdx = -1;
+    setCustomSet(true);
+  }
+
+  function clearCustomProxy() {
+    _customProxy = null;
+    _workingProxyIdx = -1;
+    setCustomSet(false);
+    setCustomUrl('');
+  }
+
+  return (
+    <Modal onClose={onClose} label="API-Diagnose">
+      <div style={{padding:'20px 24px 16px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:18,fontWeight:700}}>API-Diagnose</div>
+          <div style={{fontSize:12,color:'var(--t3)',marginTop:2}}>Prueft welche Proxies und Endpunkte erreichbar sind</div>
+        </div>
+        <button className="btn btn-o sm" onClick={onClose}>&#10005;</button>
+      </div>
+
+      <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:20}}>
+
+        {/* Proxy status */}
+        <div>
+          <div style={{fontSize:12,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Konfigurierte Proxies</div>
+          {[...(customSet?[{name:'Benutzerdefiniert (aktiv)',url:()=>''}]:[]), ...DEFAULT_PROXIES].map((p,i)=>(
+            <div key={i} style={{background:'var(--card)',border:'1px solid var(--brd2)',borderRadius:8,padding:'8px 12px',marginBottom:6,fontSize:13,display:'flex',alignItems:'center',gap:8}}>
+              <span style={{color:customSet&&i===0?'var(--gold)':'var(--t3)',fontSize:11}}>#{i+1}</span>
+              <span style={{color:'var(--t2)',fontFamily:'DM Mono,monospace',fontSize:12}}>{p.name}</span>
+              {_workingProxyIdx===i&&<span className="badge bgrn" style={{fontSize:10}}>aktiv</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* Custom proxy input */}
+        <div className="proxybox">
+          <div style={{fontSize:12,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Eigenen Proxy eintragen</div>
+          <div style={{fontSize:12,color:'var(--t2)',lineHeight:1.6}}>
+            Trage eine eigene Proxy-URL ein. Verwende <span className="mono" style={{color:'var(--gold)',fontSize:11}}>{'{url}'}</span> als Platzhalter fuer die Ziel-URL.<br/>
+            Beispiel: <span className="mono" style={{fontSize:11,color:'var(--t3)'}}>https://meinproxy.example.com/?url={'{url}'}</span>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <input
+              value={customUrl}
+              onChange={e=>setCustomUrl(e.target.value)}
+              placeholder="https://mein-proxy.example.com/?url={url}"
+              disabled={customSet}
+              style={{flex:1}}
+            />
+            {!customSet
+              ? <button className="btn btn-g sm" onClick={applyCustomProxy} disabled={!customUrl.trim()}>Setzen</button>
+              : <button className="btn btn-r sm" onClick={clearCustomProxy}>Entfernen</button>}
+          </div>
+          {customSet&&<div style={{fontSize:12,color:'var(--green)'}}>&#10003; Benutzerdefinierter Proxy aktiv. Seite neu laden empfohlen.</div>}
+        </div>
+
+        {/* Endpoint tests */}
+        <div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div style={{fontSize:12,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Endpunkt-Test</div>
+            <button className="btn btn-g sm" onClick={runDiag} disabled={running}>
+              {running?'Teste...':'&#9654; Tests starten'}
+            </button>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {tests.map(t=>{
+              const r=results[t.path];
+              const dot=!r?'#545870':r.status==='ok'?'var(--green)':r.status==='err'?'var(--red)':'var(--amber)';
+              const label=!r?'—':r.status==='ok'?('OK via '+r.proxy):r.status==='err'?('Fehler: '+r.error):('Versuche '+r.proxy+'...');
+              return (
+                <div key={t.path} style={{background:'var(--card)',border:'1px solid var(--brd2)',borderRadius:8,padding:'8px 12px',display:'flex',alignItems:'center',gap:10,fontSize:13}}>
+                  <div style={{width:10,height:10,borderRadius:'50%',background:dot,flexShrink:0,transition:'background .3s'}}/>
+                  <span className="mono" style={{fontSize:12,color:'var(--t2)',flex:1}}>{t.label}</span>
+                  <span style={{fontSize:12,color:r?.status==='ok'?'var(--green)':r?.status==='err'?'var(--red)':'var(--t3)'}}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{background:'var(--card)',border:'1px solid var(--brd2)',borderRadius:var(--r)||10,padding:'12px 14px',fontSize:12,color:'var(--t3)',lineHeight:1.8}}>
+          <b style={{color:'var(--t2)'}}>Hinweis:</b> Wenn alle Proxies fehlschlagen, liegt das oft an CORS-Einschraenkungen des Browsers.
+          Am zuverlaessigsten ist ein eigener Reverse-Proxy oder eine serverless Function, die
+          <span className="mono" style={{color:'var(--amber)',margin:'0 4px'}}>api.opsucht.net</span>
+          anfraegt und das Ergebnis mit dem Header
+          <span className="mono" style={{color:'var(--amber)',margin:'0 4px'}}>Access-Control-Allow-Origin: *</span>
+          zurueckgibt.
+        </div>
+
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKET ITEM DETAIL
+// ─────────────────────────────────────────────────────────────────────────────
+function ItemDetail({item,onClose}) {
+  const [priceRaw,setPR]=useState(null), [histRaw,setHR]=useState(null);
+  const [lp,setLP]=useState(true), [lh,setLH]=useState(true), [errP,setEP]=useState(null);
+  const [t,show]=useToast();
+
+  useEffect(()=>{
+    const ctrl=new AbortController(); const sig=ctrl.signal;
+    setLP(true); setLH(true); setEP(null);
+    API.mPrice(item.mat,sig).then(d=>{if(!sig.aborted){setPR(d);setLP(false);}}).catch(e=>{if(!sig.aborted&&e.name!=='AbortError'){setEP(e.message);setLP(false);}else if(!sig.aborted)setLP(false);});
+    API.mHist(item.mat,sig).then(d=>{if(!sig.aborted){setHR(d);setLH(false);}}).catch(()=>{if(!sig.aborted){setHR(null);setLH(false);}});
+    return ()=>ctrl.abort();
+  },[item.mat]);
+
+  const pr=priceRaw?{buy:gn(priceRaw,BUY),sell:gn(priceRaw,SELL),avg:gn(priceRaw,[['avg','price'],['avg'],['average'],['avgPrice']]),min:gn(priceRaw,[['min','price'],['min'],['minPrice']]),max:gn(priceRaw,[['max','price'],['max'],['maxPrice']])}:null;
+  const pf=pr?[['Kaufen',pr.buy],['Verkaufen',pr.sell],['Durchschnitt',pr.avg],['Minimum',pr.min],['Maximum',pr.max]].filter(([,v])=>v!=null):[];
+
+  return (
+    <Modal onClose={onClose} label={'Detail: '+item.lbl}>
+      {t&&<div className={'toast toast-'+t.type}>{t.msg}</div>}
+      <div style={{padding:'20px 24px 16px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,marginBottom:6}}>{item.lbl}</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {item.cat&&<span className="badge bg">{item.cat}</span>}
+            <button className="badge bm mono" style={{cursor:'pointer'}} onClick={()=>copyText(item.mat,show)} title="Kopieren">
+              &#8664; {item.mat.length>28?item.mat.slice(0,28)+'...':item.mat}
+            </button>
+          </div>
+        </div>
+        <button className="btn btn-o sm" onClick={onClose}>&#10005;</button>
+      </div>
+      <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:20}}>
+        {lp?<div className="skeleton" style={{height:80}}/>:errP?<div style={{color:'var(--red)',fontSize:13}}>Preis nicht ladbar: {errP}</div>:
+          pf.length?(<div>
+            <div style={{fontSize:11,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Preisdaten</div>
+            <div className="g3" style={{gap:10}}>
+              {pf.map(([l,v])=>(
+                <div key={l} style={{background:'var(--bg)',border:'1px solid var(--brd2)',borderRadius:8,padding:'10px 14px'}}>
+                  <div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>{l}</div>
+                  <div className="mono gold" style={{fontSize:18,fontWeight:500,marginTop:2}}>{fmt(v)}</div>
+                </div>
+              ))}
+            </div>
+            {priceRaw&&<Raw data={priceRaw} label="price"/>}
+          </div>):null}
+        <div>
+          <div style={{fontSize:11,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Preisverlauf</div>
+          {lh?<div className="skeleton" style={{height:150}}/>:histRaw?<Sparkline data={histRaw}/>:<div style={{color:'var(--t3)',fontSize:13}}>Kein Verlauf verfuegbar</div>}
+          {histRaw&&!lh&&<Raw data={histRaw} label="history"/>}
+        </div>
+        <div>
+          <div style={{fontSize:11,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Item-Details</div>
+          <KV obj={item.raw}/>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKET
+// ─────────────────────────────────────────────────────────────────────────────
+function Market({cats,items,prices,loading,errs,reload}) {
+  const [q,setQ]=useState(''), [cat,setCat]=useState(''), [sort,setSort]=useState('name');
+  const [view,setView]=useState('grid'), [sel,setSel]=useState(null);
+  const [page,setPage]=useState(1); const PS=48;
+
+  const catList=useMemo(()=>toArr(cats).map(c=>typeof c==='string'?c:gf(c,'name','id','_k')??String(c)).filter(Boolean),[cats]);
+  const indexed=useMemo(()=>toArr(items).map((it,i)=>normItem(it,i)),[items]);
+  const pmap=useMemo(()=>{
+    const m={};
+    toArr(prices).forEach(p=>{ const k=gf(p,'material','id','name','_k'); if(k) m[String(k)]=p; });
+    if(!Array.isArray(prices)&&typeof prices==='object'&&prices!==null) Object.entries(prices).forEach(([k,v])=>{ if(!m[k]) m[k]=v; });
+    return m;
+  },[prices]);
+
+  const filtered=useMemo(()=>{
+    let l=indexed;
+    if(cat) l=l.filter(it=>it.cat===cat);
+    if(q){ const ql=q.toLowerCase(); l=l.filter(it=>it._s.includes(ql)); }
+    if(sort==='name') l=[...l].sort((a,b)=>a.lbl.localeCompare(b.lbl));
+    if(sort==='category') l=[...l].sort((a,b)=>(a.cat||'').localeCompare(b.cat||''));
+    if(sort==='price') l=[...l].sort((a,b)=>(gn(pmap[b.mat],BUY)??0)-(gn(pmap[a.mat],BUY)??0));
+    return l;
+  },[indexed,cat,q,sort,pmap]);
+
+  const total=Math.max(1,Math.ceil(filtered.length/PS));
+  const page2=filtered.slice((page-1)*PS,page*PS);
+  useEffect(()=>setPage(1),[q,cat,sort]);
+
+  if (loading) return <Skel rows={12}/>;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <Warn errs={errs}/>
+      <div className="fbar">
+        <input placeholder="Name, Material, Kategorie..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:280}}/>
+        <select value={cat} onChange={e=>setCat(e.target.value)} style={{maxWidth:180}}>
+          <option value="">Alle Kategorien</option>
+          {catList.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={sort} onChange={e=>setSort(e.target.value)} style={{maxWidth:160}}>
+          <option value="name">A–Z Name</option>
+          <option value="category">A–Z Kategorie</option>
+          <option value="price">Preis (hoch)</option>
+        </select>
+        <div className="vtog">
+          <button className={view==='grid'?'on':''} onClick={()=>setView('grid')}>&#8862;</button>
+          <button className={view==='table'?'on':''} onClick={()=>setView('table')}>&#8801;</button>
+        </div>
+      </div>
+      <div className="sh">
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span className="st">Markt-Items</span>
+          <span className="pill">{filtered.length}</span>
+        </div>
+        <Pager page={page} total={total} set={setPage}/>
+      </div>
+      {page2.length===0?<Empty text="Keine Items gefunden"/>:
+        view==='grid'?(
+          <div className="ig">
+            {page2.map(it=>{
+              const bp=gn(pmap[it.mat],BUY);
+              return (
+                <div key={it.id} className="card click" onClick={()=>setSel(it)} tabIndex={0} onKeyDown={e=>(e.key==='Enter'||e.key===' ')&&setSel(it)}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                    <div style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:600,flex:1,marginRight:8,wordBreak:'break-word'}}>{it.lbl}</div>
+                    {bp!=null&&<span className="gold mono" style={{fontSize:13,whiteSpace:'nowrap'}}>{fmt(bp)}</span>}
+                  </div>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                    {it.cat&&<span className="badge bm">{it.cat}</span>}
+                    <span className="badge bb mono" style={{fontSize:10}}>{it.mat.length>22?it.mat.slice(0,22)+'...':it.mat}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ):(
+          <div className="tw">
+            <table>
+              <thead><tr><th>Name</th><th>Material</th><th>Kategorie</th><th>Kaufpreis</th><th>Verkaufspreis</th></tr></thead>
+              <tbody>
+                {page2.map(it=>{const p=pmap[it.mat];return(
+                  <tr key={it.id} className="click" onClick={()=>setSel(it)} tabIndex={0} onKeyDown={e=>(e.key==='Enter'||e.key===' ')&&setSel(it)}>
+                    <td>{it.lbl}</td>
+                    <td><span className="mono dim" style={{fontSize:12}}>{it.mat}</span></td>
+                    <td>{it.cat?<span className="badge bm">{it.cat}</span>:<span className="dim">—</span>}</td>
+                    <td className="gold mono">{p?fmt(gn(p,BUY)):'—'}</td>
+                    <td className="grn mono">{p?fmt(gn(p,SELL)):'—'}</td>
+                  </tr>
+                );})}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      {sel&&<ItemDetail item={sel} onClose={()=>setSel(null)}/>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+function AucDetail({a,onClose}) {
+  return (
+    <Modal onClose={onClose} label={'Auktion: '+a.nm}>
+      <div style={{padding:'20px 24px 16px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
+        <div>
+          <div style={{fontFamily:'Syne,sans-serif',fontSize:20,fontWeight:700,marginBottom:6}}>{a.nm}</div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {a.cat&&<span className="badge bg">{a.cat}</span>}
+            {a.sl&&<span className="badge bb">{a.sl}</span>}
+          </div>
+        </div>
+        <button className="btn btn-o sm" onClick={onClose}>&#10005;</button>
+      </div>
+      <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:16}}>
+        <div className="g2" style={{gap:10}}>
+          {a.pr!=null&&<div style={{background:'var(--bg)',border:'1px solid var(--brd2)',borderRadius:8,padding:'10px 14px'}}><div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Preis</div><div className="mono gold" style={{fontSize:22,fontWeight:500,marginTop:2}}>{fmt(a.pr)}</div></div>}
+          {a.qty!=null&&<div style={{background:'var(--bg)',border:'1px solid var(--brd2)',borderRadius:8,padding:'10px 14px'}}><div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Menge</div><div className="mono" style={{fontSize:22,fontWeight:500,marginTop:2}}>{a.qty}</div></div>}
+          {a.et!=null&&<div style={{background:'var(--bg)',border:'1px solid var(--brd2)',borderRadius:8,padding:'10px 14px'}}><div style={{fontSize:10,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Endet</div><div className="amb" style={{fontSize:14,fontWeight:500,marginTop:2}}>{fmtTime(a.et)}</div></div>}
+        </div>
+        <div><div style={{fontSize:11,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>Alle Felder</div><KV obj={a.raw}/></div>
+        <Raw data={a.raw} label="Auktions-Rohdaten"/>
+      </div>
+    </Modal>
+  );
+}
+
+function Auctions({cats,auctions,loadingA,errCats,errAucs,reloadAll,loadCat}) {
+  const [q,setQ]=useState(''), [cat,setCat]=useState(''), [sort,setSort]=useState('default'), [sel,setSel]=useState(null);
+  const catList=useMemo(()=>toArr(cats).map(c=>typeof c==='string'?c:gf(c,'name','id','_k')??String(c)).filter(Boolean),[cats]);
+  const indexed=useMemo(()=>toArr(auctions).map((a,i)=>normAuc(a,i)),[auctions]);
+  const filtered=useMemo(()=>{
+    let l=indexed;
+    if(q){ const ql=q.toLowerCase(); l=l.filter(a=>a._s.includes(ql)); }
+    if(sort==='price_asc') l=[...l].sort((a,b)=>(a.pr??0)-(b.pr??0));
+    if(sort==='price_desc') l=[...l].sort((a,b)=>(b.pr??0)-(a.pr??0));
+    if(sort==='name') l=[...l].sort((a,b)=>a.nm.localeCompare(b.nm));
+    return l;
+  },[indexed,q,sort]);
+
+  function handleCat(c){ setCat(c); loadCat(c); }
+  const pe=[errCats&&('Kategorien: '+errCats),errAucs&&('Auktionen: '+errAucs)].filter(Boolean);
+
+  if(loadingA&&!auctions) return <Skel rows={8}/>;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <Warn errs={pe}/>
+      <div className="fbar">
+        <input placeholder="Item, Verkaeufer, Kategorie..." value={q} onChange={e=>setQ(e.target.value)} style={{maxWidth:280}}/>
+        <select value={cat} onChange={e=>handleCat(e.target.value)} style={{maxWidth:180}}>
+          <option value="">Alle Kategorien</option>
+          {catList.map(c=><option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={sort} onChange={e=>setSort(e.target.value)} style={{maxWidth:170}}>
+          <option value="default">Standard</option>
+          <option value="name">Name A–Z</option>
+          <option value="price_desc">Preis hoch→tief</option>
+          <option value="price_asc">Preis tief→hoch</option>
+        </select>
+        <button className="btn btn-o sm" onClick={reloadAll}>&#8635; Neu laden</button>
+      </div>
+      <div className="sh">
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span className="st">Aktive Auktionen</span>
+          <span className="pill">{filtered.length}</span>
+          {loadingA&&<span className="dim" style={{fontSize:12}}>Laedt...</span>}
+        </div>
+      </div>
+      {filtered.length===0?<Empty text="Keine Auktionen gefunden"/>:(
+        <div className="ag">
+          {filtered.map(a=>(
+            <div key={a.id} className="card click" onClick={()=>setSel(a)} tabIndex={0} onKeyDown={e=>(e.key==='Enter'||e.key===' ')&&setSel(a)}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                <div style={{fontFamily:'Syne,sans-serif',fontSize:14,fontWeight:600,flex:1,marginRight:8,wordBreak:'break-word'}}>{a.nm}</div>
+                {a.pr!=null&&<span className="gold mono" style={{fontSize:14,whiteSpace:'nowrap',fontWeight:600}}>{fmt(a.pr)}</span>}
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {a.cat&&<span className="badge bg" style={{alignSelf:'flex-start'}}>{a.cat}</span>}
+                <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:4}}>
+                  {a.sl&&<span style={{fontSize:12,color:'var(--t3)'}}>Verk.: {a.sl}</span>}
+                  {a.qty!=null&&<span style={{fontSize:12,color:'var(--t3)'}}>x{a.qty}</span>}
+                  {a.et!=null&&<span style={{fontSize:12,color:'var(--amber)'}}>Endet: {fmtTime(a.et)}</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {sel&&<AucDetail a={sel} onClose={()=>setSel(null)}/>}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAW TAB
+// ─────────────────────────────────────────────────────────────────────────────
+function RawTab({mCats,mItems,mPrices,aCats,aAucs}) {
+  const eps=[
+    {label:'Market Categories',  path:'/market/categories',  data:mCats},
+    {label:'Market Items',       path:'/market/items',       data:mItems},
+    {label:'Market Prices',      path:'/market/prices',      data:mPrices},
+    {label:'Auction Categories', path:'/auctions/categories',data:aCats},
+    {label:'Active Auctions',    path:'/auctions/active',    data:aAucs},
+  ];
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{color:'var(--t3)',fontSize:13}}>Vollstaendige, unveraenderte API-Responses aller Endpunkte.</div>
+      {eps.map(({label,path,data})=>(
+        <div key={label} className="card">
+          <div style={{marginBottom:10}}>
+            <span style={{fontFamily:'Syne,sans-serif',fontSize:15,fontWeight:600}}>{label}</span>
+            <span className="mono dim" style={{fontSize:11,marginLeft:10}}>{path}</span>
+          </div>
+          {data==null?<div className="dim" style={{fontSize:13}}>Nicht geladen / Fehler</div>:<Raw data={data} label={label}/>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATS
+// ─────────────────────────────────────────────────────────────────────────────
+function Stats({mItems,mCats,mPrices,aAucs}) {
+  const ss=[
+    {l:'Markt-Items',      v:mItems ?toArr(mItems).length:null},
+    {l:'Kategorien',       v:mCats  ?toArr(mCats).length:null},
+    {l:'Preiseintraege',   v:mPrices?(Array.isArray(mPrices)?mPrices.length:Object.keys(mPrices||{}).length):null},
+    {l:'Aktive Auktionen', v:aAucs  ?toArr(aAucs).length:null},
+  ];
+  return (
+    <div className="g4" style={{gap:12}}>
+      {ss.map(({l,v})=>(
+        <div key={l} className="stat">
+          <div className="stat-v">{v!=null?v.toLocaleString('de-DE'):<span className="skeleton" style={{display:'inline-block',width:60,height:24,verticalAlign:'middle'}}/>}</div>
+          <div className="stat-l">{l}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APP ROOT
+// ─────────────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab,setTab]=useState('market');
+  const [mCats,setMC]=useState(null), [mItems,setMI]=useState(null), [mPrices,setMP]=useState(null);
+  const [mLoad,setML]=useState(true), [mErrs,setME]=useState([]);
+  const [aCats,setAC]=useState(null), [aAucs,setAA]=useState(null);
+  const [aLoadA,setALA]=useState(true), [aErrC,setAEC]=useState(null), [aErrA,setAEA]=useState(null);
+  const [showDiag,setDiag]=useState(false);
+
+  function loadMarket() {
+    setML(true); setME([]);
+    Promise.allSettled([API.mCats(),API.mItems(),API.mPrices()]).then(([c,i,p])=>{
+      setMC(c.status==='fulfilled'?c.value:null);
+      setMI(i.status==='fulfilled'?i.value:null);
+      setMP(p.status==='fulfilled'?p.value:null);
+      const e=[];
+      if(c.status!=='fulfilled') e.push('Kategorien: '+c.reason?.message);
+      if(i.status!=='fulfilled') e.push('Items: '+i.reason?.message);
+      if(p.status!=='fulfilled') e.push('Preise: '+p.reason?.message);
+      setME(e); setML(false);
+    });
+  }
+  function loadACats() { API.aCats().then(d=>setAC(d)).catch(e=>setAEC(e.message)); }
+  function loadAuctions(cat) {
+    setALA(true); setAEA(null);
+    API.aActive(cat).then(d=>{setAA(d);setALA(false);}).catch(e=>{setAEA(e.message);setALA(false);});
+  }
+
+  useEffect(()=>{ loadMarket(); loadACats(); loadAuctions(); },[]);
+
+  const allFailed = mErrs.length===3 && !mItems && !mCats && !mPrices;
+
+  return (
+    <div style={{minHeight:'100vh'}}>
+      <header className="hero">
+        <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px 22px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16,marginBottom:20}}>
+            <div>
+              <h1 style={{fontFamily:'Syne,sans-serif',fontSize:22,fontWeight:800,letterSpacing:'-.01em',marginBottom:4}}>
+                OPSUCHT <span style={{color:'var(--gold)'}}>Markt</span> &amp; Auktions Dashboard
+              </h1>
+              <p style={{color:'var(--t3)',fontSize:13}}>Live-Daten aus der OPSUCHT Wirtschafts-API &#183; Marktpreise &#183; Auktionen</p>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              <button className="btn btn-o sm" onClick={()=>setDiag(true)} title="API-Diagnose oeffnen">
+                &#9881; Diagnose
+              </button>
+              <span className="mono dim" style={{fontSize:11}}>api.opsucht.net</span>
+              <span className={'badge '+(allFailed?'bred':'bgrn')}>{allFailed?'● Fehler':'● Live'}</span>
+            </div>
+          </div>
+          <Stats mItems={mItems} mCats={mCats} mPrices={mPrices} aAucs={aAucs}/>
+        </div>
+        <div className="goldline"/>
+      </header>
+
+      {allFailed&&(
+        <div style={{maxWidth:1200,margin:'16px auto 0',padding:'0 20px'}}>
+          <div style={{background:'rgba(239,68,68,.07)',border:'1px solid rgba(239,68,68,.25)',borderRadius:'var(--rl)',padding:'16px 20px',display:'flex',alignItems:'flex-start',gap:12,flexWrap:'wrap'}}>
+            <div style={{fontSize:20,color:'var(--red)',flexShrink:0}}>&#9888;</div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,marginBottom:4,color:'var(--t1)'}}>API nicht erreichbar</div>
+              <div style={{fontSize:13,color:'var(--t3)',lineHeight:1.7}}>
+                Alle CORS-Proxies haben fehlgeschlagen. Das passiert haeufig bei GitHub Pages wegen Browser-CORS-Einschraenkungen.<br/>
+                Oeffne die <b style={{color:'var(--amber)'}}>Diagnose</b>, um zu sehen welcher Proxy funktioniert, oder trage einen eigenen Proxy ein.
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8,flexShrink:0}}>
+              <button className="btn btn-o sm" onClick={()=>setDiag(true)}>&#9881; Diagnose</button>
+              <button className="btn btn-g sm" onClick={()=>{loadMarket();loadACats();loadAuctions();}}>&#8635; Neu laden</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px 48px'}}>
+        <div className="tabs" style={{marginBottom:24,maxWidth:400}}>
+          {[['market','Markt'],['auctions','Auktionen'],['raw','Rohdaten']].map(([id,lbl])=>(
+            <button key={id} className={'tab'+(tab===id?' on':'')} onClick={()=>setTab(id)}>{lbl}</button>
+          ))}
+        </div>
+
+        {tab==='market'   &&<Market cats={mCats} items={mItems} prices={mPrices} loading={mLoad} errs={mErrs} reload={loadMarket}/>}
+        {tab==='auctions' &&<Auctions cats={aCats} auctions={aAucs} loadingA={aLoadA} errCats={aErrC} errAucs={aErrA} reloadAll={()=>{loadACats();loadAuctions();}} loadCat={cat=>loadAuctions(cat)}/>}
+        {tab==='raw'      &&<RawTab mCats={mCats} mItems={mItems} mPrices={mPrices} aCats={aCats} aAucs={aAucs}/>}
+      </main>
+
+      {showDiag&&<DiagPanel onClose={()=>setDiag(false)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+</script>
+</body>
+</html>
