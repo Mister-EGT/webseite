@@ -22,7 +22,7 @@
   --border-1:#1f1f25;--border-2:#2e2e35;
   --text-1:#eaeaec;--text-2:#9a9aa2;--text-3:#606068;
   --accent:#c98a3c;--accent-h:#dfa050;--accent-dim:rgba(201,138,60,.12);--accent-glow:rgba(201,138,60,.22);
-  --green:#3db870;--red:#dc4e4e;--blue:#5a9fea;--orange:#d49030;
+  --green:#3db870;--red:#dc4e4e;--blue:#5a9fea;--orange:#d49030;--purple:#b084e0;
   --radius-s:6px;--radius-m:10px;--radius-l:16px;--radius-xl:24px;
   --shadow-s:0 1px 3px rgba(0,0,0,.4);--shadow-m:0 4px 16px rgba(0,0,0,.45);--shadow-l:0 12px 40px rgba(0,0,0,.55);
   --ff:'Inter',system-ui,-apple-system,sans-serif;
@@ -36,6 +36,7 @@
   --border-1:#dddad5;--border-2:#ccc9c3;
   --text-1:#18181b;--text-2:#55555d;--text-3:#99999f;
   --accent:#a87125;--accent-h:#bf8430;--accent-dim:rgba(168,113,37,.1);--accent-glow:rgba(168,113,37,.16);
+  --purple:#7a38ab;
   --shadow-s:0 1px 3px rgba(0,0,0,.07);--shadow-m:0 4px 16px rgba(0,0,0,.09);--shadow-l:0 12px 40px rgba(0,0,0,.13);
   color-scheme:light;
 }
@@ -50,6 +51,7 @@ body{font-family:var(--ff);background:var(--bg-0);color:var(--text-1);
   padding-bottom:env(safe-area-inset-bottom);
   padding-left:env(safe-area-inset-left);
   padding-right:env(safe-area-inset-right);}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-h))}
 a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-h)}
 img,svg{display:block;max-width:100%}
 button,input,textarea,select{font:inherit;color:inherit;border:none;background:none;outline:none}
@@ -207,6 +209,8 @@ ul,ol{list-style:none}
 .badge-amber{background:var(--accent-dim);color:var(--accent)}
 .badge-green{background:rgba(61,184,112,.12);color:var(--green)}
 .badge-blue{background:rgba(90,159,234,.12);color:var(--blue)}
+.badge-reasoning{background:rgba(156,89,209,.14);color:var(--purple)}
+[data-theme="light"] .badge-reasoning{background:rgba(128,56,184,.1);color:var(--purple)}
 
 /* ═══ §8 CHAT MESSAGES ═══ */
 .chat-container{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;
@@ -287,10 +291,15 @@ ul,ol{list-style:none}
   background:transparent;
 }
 .reasoning-hdr:hover{background:rgba(201,138,60,.08)}
-.reasoning-hdr .r-icon{width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.reasoning-hdr .r-icon{width:16px;height:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:color .2s}
 .reasoning-hdr .r-icon svg{width:16px;height:16px}
 .reasoning-hdr .r-label{flex:1;display:flex;align-items:center;gap:8px}
 .reasoning-hdr .r-meta{font-size:.7rem;color:var(--text-3);font-family:var(--fm);font-weight:400;white-space:nowrap}
+.reasoning-hdr .r-timer{
+  font-family:var(--fm);font-size:.7rem;color:var(--accent);
+  background:rgba(201,138,60,.15);padding:2px 9px;border-radius:99px;
+  font-weight:500;white-space:nowrap;letter-spacing:.02em;
+}
 .reasoning-hdr .r-chevron{width:14px;height:14px;transition:transform .3s ease;opacity:.5;flex-shrink:0}
 .reasoning-hdr .r-chevron svg{width:14px;height:14px}
 .reasoning-hdr.expanded .r-chevron{transform:rotate(180deg);opacity:.8}
@@ -309,10 +318,46 @@ ul,ol{list-style:none}
 
 /* Streaming pulse on the reasoning block */
 .reasoning-block.streaming{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
-.reasoning-block.streaming .reasoning-hdr .r-label::after{
-  content:'';display:inline-block;width:7px;height:7px;background:var(--accent);
-  border-radius:50%;animation:blink 1s ease infinite;margin-left:2px;flex-shrink:0;
+.reasoning-block.streaming .r-icon{color:var(--accent);animation:rBrainPulse 1.8s ease-in-out infinite}
+@keyframes rBrainPulse{
+  0%,100%{opacity:.7;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.15)}
 }
+
+/* Reasoning Timeline — steps with dots, lines and icons */
+.r-timeline{padding:4px 0 2px 0}
+.r-step{
+  position:relative;padding:5px 0 10px 22px;
+  font-size:.84rem;line-height:1.6;color:var(--text-2);
+  animation:fadeUp .3s ease;
+}
+.r-step::before{
+  content:'';position:absolute;left:3px;top:10px;
+  width:9px;height:9px;border-radius:50%;
+  background:var(--border-2);z-index:1;
+  transition:background .3s,box-shadow .3s,transform .3s;
+}
+.r-step::after{
+  content:'';position:absolute;left:7px;top:20px;
+  bottom:-4px;width:1px;background:var(--border-2);opacity:.7;
+}
+.r-step:last-child::after{display:none}
+.r-step.completed::before{
+  background:var(--accent);opacity:.85;
+}
+.r-step.active::before{
+  background:var(--accent);opacity:1;
+  box-shadow:0 0 0 4px var(--accent-dim);
+  animation:rDotPulse 1.2s ease-in-out infinite;
+}
+@keyframes rDotPulse{
+  0%,100%{box-shadow:0 0 0 4px var(--accent-dim)}
+  50%{box-shadow:0 0 0 8px rgba(201,138,60,.08)}
+}
+.r-step-md > *:first-child{margin-top:0}
+.r-step-md > *:last-child{margin-bottom:0}
+.r-step-md p{margin-bottom:.35em}
+.r-step-md p:last-child{margin-bottom:0}
 
 /* ═══ §10 REASONING BUTTON in input ═══ */
 .reasoning-btn{
@@ -344,7 +389,6 @@ ul,ol{list-style:none}
   border-radius:3px;color:var(--text-3);transition:color .15s}
 .attached-chip button:hover{color:var(--red)}
 .attached-chip button svg{width:12px;height:12px}
-/* CHANGE: align-items center for vertical text centering */
 .chat-input-box{display:flex;align-items:center;gap:8px;background:var(--bg-2);
   border:1px solid var(--border-2);border-radius:var(--radius-m);padding:10px 12px;
   transition:border-color .25s,box-shadow .25s}
@@ -751,6 +795,43 @@ async function validateKey() {
   } catch { return false; }
 }
 
+// ── Reasoning support detection ──
+// Checks whether a model supports reasoning / extended thinking.
+function modelSupportsReasoning(model) {
+  if (!model) return false;
+  // 1. OpenRouter's supported_parameters is the authoritative signal
+  if (Array.isArray(model.supported_parameters)) {
+    const sp = model.supported_parameters;
+    if (sp.includes('reasoning') ||
+        sp.includes('include_reasoning') ||
+        sp.includes('reasoning_effort')) return true;
+  }
+  // 2. Fallback: known reasoning-capable model patterns
+  const id = (model.id || '').toLowerCase();
+  const name = (model.name || '').toLowerCase();
+  const combined = id + ' ' + name;
+  const patterns = [
+    /\bo1\b/, /\bo1-/, /\/o1/,
+    /\bo3\b/, /\bo3-/, /\/o3/,
+    /\bo4-mini/, /\/o4/,
+    /deepseek-r1/, /deepseek\/deepseek-r1/, /\br1-/,
+    /thinking/, /reasoning/, /\bqwq\b/,
+    /grok-3-mini/, /grok-4/,
+    /claude-3\.?7/, /claude-opus-4/, /claude-sonnet-4/, /claude-3-7/,
+    /gpt-5/, /gemini-2\.5/, /gemini-2\.0-flash-thinking/,
+    /magistral/, /phi-4-reasoning/,
+  ];
+  return patterns.some(p => p.test(combined));
+}
+
+// Returns the effort levels supported by a model. Currently OpenRouter
+// abstracts this across providers, so reasoning-capable models generally
+// accept low/medium/high (Anthropic models translate to thinking budget).
+function getReasoningEfforts(model) {
+  if (!modelSupportsReasoning(model)) return [];
+  return ['low', 'medium', 'high'];
+}
+
 /**
  * @param {function} onToken - (text, type:'content'|'reasoning')
  */
@@ -770,7 +851,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
   if (params.presencePenalty) body.presence_penalty = params.presencePenalty;
   if (params.frequencyPenalty) body.frequency_penalty = params.frequencyPenalty;
 
-  // Reasoning / Extended Thinking
+  // Reasoning / Extended Thinking (only sent when the model supports it — see sendChatMessage)
   if (params.reasoningEnabled && params.reasoningEffort) {
     body.reasoning = { effort: params.reasoningEffort };
   }
@@ -916,7 +997,36 @@ let attachedImages = [];
 // Reasoning effort cycle
 const REASONING_CYCLE = ['off', 'low', 'medium', 'high'];
 
+// Reasoning live timer state
+let reasoningStartTime = null;
+let reasoningTimerInterval = null;
+
+function startReasoningTimer() {
+  if (reasoningTimerInterval) return;
+  reasoningStartTime = Date.now();
+  reasoningTimerInterval = setInterval(() => {
+    const el = document.getElementById('r-timer');
+    if (el) {
+      const elapsed = (Date.now() - reasoningStartTime) / 1000;
+      el.textContent = elapsed.toFixed(1) + 's';
+    }
+  }, 100);
+}
+
+function stopReasoningTimer() {
+  if (reasoningTimerInterval) {
+    clearInterval(reasoningTimerInterval);
+    reasoningTimerInterval = null;
+  }
+}
+
 function cycleReasoning() {
+  const chat = store.getChat();
+  const currentModel = chat ? store.modelMap[chat.model] : null;
+  if (!modelSupportsReasoning(currentModel)) {
+    toast('Dieses Modell unterstützt kein Reasoning.', 'info');
+    return;
+  }
   const s = store.settings;
   if (!s.reasoningEnabled) {
     s.reasoningEnabled = true;
@@ -1263,14 +1373,39 @@ function renderMessages() {
   }
 }
 
+// Splits a reasoning text into visual "steps" (based on paragraph breaks).
+// Used to render the timeline with connecting lines and dot icons.
+function parseReasoningSteps(text) {
+  if (!text) return [];
+  const parts = text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts : [text];
+}
+
+function buildStepsHtml(steps, isStreaming) {
+  return steps.map((step, i) => {
+    const isLast = i === steps.length - 1;
+    const stateClass = isStreaming ? (isLast ? 'active' : 'completed') : 'completed';
+    return `<div class="r-step ${stateClass}"><div class="r-step-md msg-content">${renderMd(step)}</div></div>`;
+  }).join('');
+}
+
 function buildReasoningBlockHtml(reasoning, isStreaming) {
   const charCount = reasoning ? reasoning.length : 0;
-  const label = isStreaming ? 'Denkt nach…' : 'Denkprozess';
-  const meta = !isStreaming && charCount > 0 ? `<span class="r-meta">${charCount > 1000 ? (charCount / 1000).toFixed(1) + 'K' : charCount} Zeichen</span>` : '';
+  const label = isStreaming ? 'Denkt nach' : 'Denkprozess';
   const expandedClass = isStreaming ? ' expanded' : '';
   const streamClass = isStreaming ? ' streaming' : '';
   const contentId = isStreaming ? ' id="stream-reasoning-content"' : '';
-  const content = reasoning ? renderMd(reasoning) : '';
+
+  const steps = parseReasoningSteps(reasoning);
+  const stepsHtml = buildStepsHtml(steps, isStreaming);
+
+  let meta = '';
+  if (isStreaming) {
+    meta = `<span class="r-timer" id="r-timer">0.0s</span>`;
+  } else if (charCount > 0) {
+    const sizeLabel = charCount > 1000 ? (charCount / 1000).toFixed(1) + 'K' : charCount;
+    meta = `<span class="r-meta">${sizeLabel} Zeichen</span>`;
+  }
 
   return `<div class="reasoning-block${streamClass}">
     <button class="reasoning-hdr${expandedClass}" onclick="nxToggleReasoning(this)">
@@ -1281,7 +1416,9 @@ function buildReasoningBlockHtml(reasoning, isStreaming) {
     </button>
     <div class="reasoning-body-wrap${expandedClass}">
       <div class="reasoning-body">
-        <div class="reasoning-body-inner msg-content"${contentId}>${content}</div>
+        <div class="reasoning-body-inner"${contentId}>
+          <div class="r-timeline">${stepsHtml}</div>
+        </div>
       </div>
     </div>
   </div>`;
@@ -1420,9 +1557,13 @@ function updateStreamReasoning(text) {
   if (text.length > 0 && wrap.style.display === 'none') {
     wrap.style.display = 'block';
     wrap.innerHTML = buildReasoningBlockHtml(text, true);
+    startReasoningTimer();
   } else {
     const inner = document.getElementById('stream-reasoning-content');
-    if (inner) inner.innerHTML = renderMd(text);
+    if (inner) {
+      const steps = parseReasoningSteps(text);
+      inner.innerHTML = `<div class="r-timeline">${buildStepsHtml(steps, true)}</div>`;
+    }
   }
   const chatC = document.getElementById('chat-container');
   if (chatC && store.settings.autoScroll) chatC.scrollTop = chatC.scrollHeight;
@@ -1431,13 +1572,29 @@ function updateStreamReasoning(text) {
 function finalizeStreamReasoning() {
   const wrap = document.getElementById('stream-reasoning-wrap');
   if (!wrap || wrap.style.display === 'none') return;
-  // Remove streaming class, update header text
   const block = wrap.querySelector('.reasoning-block');
-  if (block) {
-    block.classList.remove('streaming');
-    const label = block.querySelector('.r-label');
-    if (label) label.textContent = 'Denkprozess';
+  if (!block || !block.classList.contains('streaming')) return;
+
+  stopReasoningTimer();
+  block.classList.remove('streaming');
+
+  const label = block.querySelector('.r-label');
+  if (label) label.textContent = 'Denkprozess';
+
+  // Freeze timer as static meta badge
+  const timer = block.querySelector('#r-timer');
+  if (timer && reasoningStartTime) {
+    const elapsed = ((Date.now() - reasoningStartTime) / 1000).toFixed(1) + 's';
+    timer.id = '';
+    timer.className = 'r-meta';
+    timer.textContent = elapsed;
   }
+
+  // Transition all steps to completed
+  block.querySelectorAll('.r-step').forEach(s => {
+    s.classList.remove('active');
+    s.classList.add('completed');
+  });
 }
 
 function updateStreamContent(text) {
@@ -1463,16 +1620,27 @@ function renderInputArea() {
   const area = document.getElementById('chat-input-area');
   if (!area) return;
 
-  const rLabel = getReasoningLabel();
-  const rActive = store.settings.reasoningEnabled ? ' active' : '';
+  // Determine whether the current model supports reasoning
+  const chat = store.getChat();
+  const currentModel = chat ? store.modelMap[chat.model] : null;
+  const supportsReasoning = modelSupportsReasoning(currentModel);
+
+  const rLabel = supportsReasoning ? getReasoningLabel() : null;
+  const rActive = (supportsReasoning && store.settings.reasoningEnabled) ? ' active' : '';
   const rBadge = rLabel ? `<span class="r-badge">${rLabel}</span>` : '';
+  const rTitle = store.settings.reasoningEnabled
+    ? `Reasoning: ${store.settings.reasoningEffort.toUpperCase()} — Klick zum Wechseln (low · medium · high · aus)`
+    : 'Reasoning aktivieren (Klick: low → medium → high → aus)';
+  const reasoningBtnHtml = supportsReasoning
+    ? `<button class="reasoning-btn${rActive}" id="btn-reasoning" title="${rTitle}">${IC.think}${rBadge}</button>`
+    : '';
 
   area.innerHTML = `
     <div class="chat-input-wrap">
       <div class="attached-preview" id="attached-preview" style="display:none"></div>
       <div class="chat-input-box" id="input-box">
         <button class="attach-btn" id="btn-attach" title="Bild anhängen">${IC.paperclip}</button>
-        <button class="reasoning-btn${rActive}" id="btn-reasoning" title="Reasoning: ${store.settings.reasoningEnabled ? store.settings.reasoningEffort : 'aus'} (Klick zum Wechseln)">${IC.think}${rBadge}</button>
+        ${reasoningBtnHtml}
         <textarea id="msg-input" rows="1" placeholder="Nachricht eingeben…"></textarea>
         <button class="send-btn" id="btn-send" disabled>${IC.send}</button>
       </div>
@@ -1517,7 +1685,7 @@ function renderInputArea() {
   attachBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', handleFileAttach);
 
-  reasoningBtn.addEventListener('click', cycleReasoning);
+  if (reasoningBtn) reasoningBtn.addEventListener('click', cycleReasoning);
 
   updateAttachedPreview();
 }
@@ -1649,8 +1817,15 @@ async function sendChatMessage(content, isResend) {
   let reasoningText = '';
   const startTime = Date.now();
 
+  // Only send the reasoning parameter when the current model actually supports it.
+  const currentModel = store.modelMap[chat.model];
+  const effectiveParams = { ...store.settings };
+  if (!modelSupportsReasoning(currentModel)) {
+    effectiveParams.reasoningEnabled = false;
+  }
+
   await streamChat(
-    apiMsgs, chat.model, store.settings,
+    apiMsgs, chat.model, effectiveParams,
     (token, type) => {
       if (type === 'reasoning') {
         reasoningText += token;
@@ -1661,6 +1836,7 @@ async function sendChatMessage(content, isResend) {
       }
     },
     (info) => {
+      stopReasoningTimer();
       removeTypingIndicator();
       const duration = Date.now() - startTime;
       const usage = info.usage || {};
@@ -1693,6 +1869,7 @@ async function sendChatMessage(content, isResend) {
       updateSendBtn();
     },
     (err) => {
+      stopReasoningTimer();
       removeTypingIndicator();
       const errMsg = { id: uuid(), role: 'assistant', content: `**Fehler:** ${err.message}\n\nBitte überprüfe dein Modell und deinen API Key.`, ts: Date.now() };
       chat.messages.push(errMsg);
@@ -1706,6 +1883,7 @@ async function sendChatMessage(content, isResend) {
 
 function stopStreaming() {
   if (store.abortCtrl) { store.abortCtrl.abort(); store.abortCtrl = null; }
+  stopReasoningTimer();
 }
 
 function regenerateMessage(msg, chat) {
@@ -1761,6 +1939,7 @@ const MODEL_CATEGORIES = [
   { key: 'all', label: 'Alle' },
   { key: 'fav', label: '★ Favoriten' },
   { key: 'free', label: 'Kostenlos' },
+  { key: 'reasoning', label: '🧠 Reasoning' },
   { key: 'multimodal', label: 'Multimodal' },
   { key: 'large', label: '100K+ Kontext' },
   { key: 'openai', label: 'OpenAI' },
@@ -1777,6 +1956,7 @@ function filterModels() {
 
   if (modelCategory === 'fav') list = list.filter(m => store.favModels.includes(m.id));
   else if (modelCategory === 'free') list = list.filter(m => parseFloat(m.pricing?.prompt || '1') === 0 && parseFloat(m.pricing?.completion || '1') === 0);
+  else if (modelCategory === 'reasoning') list = list.filter(m => modelSupportsReasoning(m));
   else if (modelCategory === 'multimodal') list = list.filter(m => m.architecture?.modality?.includes('image') || m.id.includes('vision') || m.architecture?.modality === 'multimodal');
   else if (modelCategory === 'large') list = list.filter(m => (m.context_length || 0) >= 100000);
   else if (['openai','anthropic','google','meta','mistral'].includes(modelCategory)) list = list.filter(m => m.id.toLowerCase().includes(modelCategory));
@@ -1784,12 +1964,14 @@ function filterModels() {
   return list;
 }
 
+// ── FIX: Search no longer loses focus on every keystroke ──
+// The previous implementation re-rendered the entire panel (including
+// the search input itself) on every input event, which destroyed the
+// active element. We now split rendering: the panel scaffolding is
+// built once, and only the grid is updated on filter changes.
 function renderModelsPanel() {
   const panel = document.getElementById('models-panel');
   if (!panel) return;
-  const chat = store.getChat();
-  const currentModel = chat?.model;
-  const filtered = filterModels();
 
   panel.innerHTML = `
     <div class="panel-head">
@@ -1797,28 +1979,58 @@ function renderModelsPanel() {
       <button class="btn-icon" id="close-models">${IC.x}</button>
     </div>
     <div class="models-search">
-      <input type="text" placeholder="Modell suchen…" id="model-search" value="${esc(modelFilter)}">
-      <div class="filter-chips">
+      <input type="text" placeholder="Modell suchen…" id="model-search" value="${esc(modelFilter)}" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <div class="filter-chips" id="filter-chips">
         ${MODEL_CATEGORIES.map(c => `<span class="filter-chip${modelCategory === c.key ? ' active' : ''}" data-cat="${c.key}">${c.label}</span>`).join('')}
       </div>
     </div>
-    <div class="models-grid" id="models-grid">
-      ${filtered.length === 0 ? '<p style="padding:20px;color:var(--text-3);text-align:center">Keine Modelle gefunden</p>' : ''}
-      ${filtered.slice(0, 120).map(m => modelCardHtml(m, currentModel)).join('')}
-      ${filtered.length > 120 ? `<p style="padding:12px;color:var(--text-3);text-align:center;font-size:.82rem">${filtered.length - 120} weitere Modelle — verfeinere die Suche</p>` : ''}
-    </div>
+    <div class="models-grid" id="models-grid"></div>
   `;
 
   panel.querySelector('#close-models').onclick = () => toggleModels(false);
-  const searchInput = panel.querySelector('#model-search');
-  searchInput.addEventListener('input', (e) => { modelFilter = e.target.value; renderModelsPanel(); });
-  setTimeout(() => searchInput.focus(), 100);
 
+  const searchInput = panel.querySelector('#model-search');
+  // Only update the grid — NOT the whole panel — so the input keeps focus.
+  searchInput.addEventListener('input', (e) => {
+    modelFilter = e.target.value;
+    updateModelsGrid();
+  });
+  setTimeout(() => {
+    if (document.activeElement !== searchInput) searchInput.focus();
+  }, 100);
+
+  // Category chip clicks — only update active state + grid
   panel.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => { modelCategory = chip.dataset.cat; renderModelsPanel(); });
+    chip.addEventListener('click', () => {
+      modelCategory = chip.dataset.cat;
+      panel.querySelectorAll('.filter-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.cat === modelCategory);
+      });
+      updateModelsGrid();
+    });
   });
 
-  panel.querySelectorAll('.model-card').forEach(card => {
+    updateModelsGrid();
+}
+
+// Renders only the grid content — called on every search keystroke
+// and category change. Keeps the search input untouched so focus is
+// never lost mid-typing.
+function updateModelsGrid() {
+  const grid = document.getElementById('models-grid');
+  if (!grid) return;
+
+  const chat = store.getChat();
+  const currentModel = chat?.model;
+  const filtered = filterModels();
+
+  grid.innerHTML = `
+    ${filtered.length === 0 ? '<p style="padding:20px;color:var(--text-3);text-align:center">Keine Modelle gefunden</p>' : ''}
+    ${filtered.slice(0, 120).map(m => modelCardHtml(m, currentModel)).join('')}
+    ${filtered.length > 120 ? `<p style="padding:12px;color:var(--text-3);text-align:center;font-size:.82rem">${filtered.length - 120} weitere Modelle — verfeinere die Suche</p>` : ''}
+  `;
+
+  grid.querySelectorAll('.model-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('.fav-btn')) return;
       const id = card.dataset.id;
@@ -1829,7 +2041,7 @@ function renderModelsPanel() {
     });
   });
 
-  panel.querySelectorAll('.fav-btn').forEach(btn => {
+  grid.querySelectorAll('.fav-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = btn.dataset.model;
@@ -1837,7 +2049,9 @@ function renderModelsPanel() {
       if (idx >= 0) store.favModels.splice(idx, 1);
       else store.favModels.push(id);
       store.save();
-      renderModelsPanel();
+      // Only re-render the affected card area — but since favorite state
+      // can affect the "Favoriten" filter, simply refresh the grid.
+      updateModelsGrid();
     });
   });
 }
@@ -1850,9 +2064,11 @@ function modelCardHtml(m, currentModel) {
   const isFree = pp === 0 && cp === 0;
   const provider = m.id.split('/')[0] || '?';
   const ctx = m.context_length || 0;
+  const supportsR = modelSupportsReasoning(m);
 
   const badges = [];
   if (isFree) badges.push('<span class="badge badge-green">Kostenlos</span>');
+  if (supportsR) badges.push('<span class="badge badge-reasoning">🧠 Reasoning</span>');
   if (ctx >= 100000) badges.push(`<span class="badge badge-blue">${formatTokens(ctx)} ctx</span>`);
   if (m.architecture?.modality?.includes('image') || m.architecture?.modality === 'multimodal') badges.push('<span class="badge badge-amber">Multimodal</span>');
 
