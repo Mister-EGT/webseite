@@ -12,7 +12,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════
-   NEXUS DESIGN SYSTEM v3 — CSS
+   NEXUS DESIGN SYSTEM v3.1 — CSS
    ═══════════════════════════════════ */
 
 /* ── §1 Design Tokens ── */
@@ -51,7 +51,6 @@ body{font-family:var(--ff);background:var(--bg-0);color:var(--text-1);
   padding-bottom:env(safe-area-inset-bottom);
   padding-left:env(safe-area-inset-left);
   padding-right:env(safe-area-inset-right);}
-a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-h))}
 a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-h)}
 img,svg{display:block;max-width:100%}
 button,input,textarea,select{font:inherit;color:inherit;border:none;background:none;outline:none}
@@ -185,6 +184,7 @@ ul,ol{list-style:none}
 .chat-item .chat-actions button{width:28px;height:28px;display:flex;align-items:center;justify-content:center;
   border-radius:4px;color:var(--text-3);transition:background .15s,color .15s}
 .chat-item .chat-actions button:hover{background:var(--bg-4);color:var(--text-1)}
+.chat-item .chat-draft-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-right:2px}
 .sidebar-footer{padding:12px;border-top:1px solid var(--border-1);display:flex;flex-direction:column;gap:2px;flex-shrink:0}
 .sidebar-footer button{display:flex;align-items:center;gap:10px;padding:10px 12px;
   border-radius:var(--radius-s);font-size:.82rem;color:var(--text-2);
@@ -214,7 +214,7 @@ ul,ol{list-style:none}
 
 /* ═══ §8 CHAT MESSAGES ═══ */
 .chat-container{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;
-  scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  scroll-behavior:smooth;-webkit-overflow-scrolling:touch;position:relative}
 .chat-messages{max-width:var(--msg-max);width:100%;margin:0 auto;display:flex;flex-direction:column;gap:6px;flex:1}
 .msg{position:relative;padding:14px 18px;border-radius:var(--radius-m);
   font-size:.92rem;line-height:1.72;animation:fadeUp .3s ease}
@@ -234,10 +234,13 @@ ul,ol{list-style:none}
   border-radius:var(--radius-s);color:var(--text-3);transition:background .15s,color .15s}
 .msg-actions button:hover{background:var(--bg-hover);color:var(--text-1)}
 .msg-error{background:rgba(220,78,78,.08);border-color:rgba(220,78,78,.2);color:var(--red)}
+.msg-error .msg-content strong{color:var(--red)}
 .typing-indicator{display:inline-flex;gap:4px;padding:4px 0}
 .typing-indicator span{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:blink 1.4s infinite both}
 .typing-indicator span:nth-child(2){animation-delay:.2s}
 .typing-indicator span:nth-child(3){animation-delay:.4s}
+.typing-stats{display:inline-flex;margin-left:10px;font-size:.7rem;font-family:var(--fm);color:var(--text-3);gap:8px;align-items:center}
+.typing-stats .sep{opacity:.4}
 
 /* ── Markdown in Messages ── */
 .msg-content{overflow-wrap:break-word;word-break:break-word}
@@ -304,7 +307,6 @@ ul,ol{list-style:none}
 .reasoning-hdr .r-chevron svg{width:14px;height:14px}
 .reasoning-hdr.expanded .r-chevron{transform:rotate(180deg);opacity:.8}
 
-/* Smooth animated body with grid trick */
 .reasoning-body-wrap{
   display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s cubic-bezier(.4,0,.2,1);
 }
@@ -316,7 +318,6 @@ ul,ol{list-style:none}
 }
 .reasoning-body-inner .msg-content{font-size:.84rem;color:var(--text-2)}
 
-/* Streaming pulse on the reasoning block */
 .reasoning-block.streaming{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
 .reasoning-block.streaming .r-icon{color:var(--accent);animation:rBrainPulse 1.8s ease-in-out infinite}
 @keyframes rBrainPulse{
@@ -324,7 +325,6 @@ ul,ol{list-style:none}
   50%{opacity:1;transform:scale(1.15)}
 }
 
-/* Reasoning Timeline — steps with dots, lines and icons */
 .r-timeline{padding:4px 0 2px 0}
 .r-step{
   position:relative;padding:5px 0 10px 22px;
@@ -398,7 +398,7 @@ ul,ol{list-style:none}
 .chat-input-box textarea::placeholder{color:var(--text-3)}
 .chat-input-box .send-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;
   border-radius:var(--radius-s);background:var(--accent);color:#fff;
-  transition:background .2s,transform .15s;flex-shrink:0;align-self:flex-end}
+  transition:background .2s,transform .15s;flex-shrink:0}
 .chat-input-box .send-btn:hover{background:var(--accent-h)}
 .chat-input-box .send-btn:active{transform:scale(.92)}
 .chat-input-box .send-btn:disabled{opacity:.35;cursor:not-allowed}
@@ -407,7 +407,27 @@ ul,ol{list-style:none}
   border-radius:var(--radius-s);color:var(--text-3);transition:background .15s,color .15s;flex-shrink:0}
 .chat-input-box .attach-btn:hover{background:var(--bg-hover);color:var(--text-1)}
 .input-info{display:flex;align-items:center;justify-content:space-between;margin-top:6px;
-  font-size:.72rem;color:var(--text-3);padding:0 4px}
+  font-size:.72rem;color:var(--text-3);padding:0 4px;gap:12px}
+.input-info .tokens{font-family:var(--fm);color:var(--text-2)}
+.input-info .tokens.warn{color:var(--orange)}
+
+/* ═══ §11b SCROLL-TO-BOTTOM Button ═══ */
+.scroll-to-bottom-btn{
+  position:absolute;bottom:16px;right:16px;
+  width:38px;height:38px;border-radius:50%;
+  background:var(--bg-3);border:1px solid var(--border-2);
+  color:var(--text-1);box-shadow:var(--shadow-m);
+  display:flex;align-items:center;justify-content:center;
+  z-index:50;transition:opacity .2s ease,transform .2s ease;
+  opacity:0;pointer-events:none;transform:translateY(8px) scale(.95);
+}
+.scroll-to-bottom-btn.visible{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+.scroll-to-bottom-btn:hover{background:var(--bg-4);border-color:var(--accent)}
+.scroll-to-bottom-btn svg{width:16px;height:16px}
+.scroll-to-bottom-btn .new-msg-dot{
+  position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--bg-3);
+}
 
 /* ═══ §12 EMPTY STATE ═══ */
 .empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -434,6 +454,14 @@ ul,ol{list-style:none}
 .models-search input{width:100%;padding:10px 14px;background:var(--bg-2);border:1px solid var(--border-1);
   border-radius:var(--radius-s);font-size:.88rem;transition:border-color .2s}
 .models-search input:focus{border-color:var(--accent)}
+.models-sort-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.models-sort-row .count{font-size:.72rem;color:var(--text-3);font-family:var(--fm)}
+.models-sort-row select{padding:6px 26px 6px 10px;background:var(--bg-2);border:1px solid var(--border-1);
+  border-radius:var(--radius-s);font-size:.78rem;color:var(--text-2);cursor:pointer;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9aa2' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;background-size:12px}
+.models-sort-row select:hover{border-color:var(--accent)}
 .filter-chips{display:flex;gap:6px;flex-wrap:wrap}
 .filter-chip{padding:5px 12px;border-radius:99px;font-size:.74rem;font-weight:500;
   background:var(--bg-3);border:1px solid var(--border-1);cursor:pointer;
@@ -538,6 +566,16 @@ ul,ol{list-style:none}
 .modal-btns .btn-danger{background:var(--red);color:#fff}
 .modal-btns .btn-danger:hover{background:#e56060}
 
+/* ═══ §17b SHORTCUTS MODAL ═══ */
+.shortcuts-modal{max-width:520px}
+.shortcuts-modal .kbd-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.shortcuts-modal .kbd-table td{padding:9px 6px;border-bottom:1px solid var(--border-1)}
+.shortcuts-modal .kbd-table tr:last-child td{border-bottom:none}
+.shortcuts-modal .kbd-table td:first-child{color:var(--text-2);width:auto}
+.shortcuts-modal .kbd-table td:last-child{text-align:right;white-space:nowrap}
+.kbd{font-family:var(--fm);font-size:.78rem;background:var(--bg-1);border:1px solid var(--border-2);
+  padding:2px 7px;border-radius:4px;color:var(--text-1);box-shadow:0 1px 0 var(--border-2);margin-left:4px}
+
 /* ═══ §18 ANIMATIONS ═══ */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -591,6 +629,8 @@ ul,ol{list-style:none}
   .chat-item .chat-actions{opacity:1}
 
   .input-info .desktop-only{display:none}
+
+  .scroll-to-bottom-btn{bottom:12px;right:12px}
 }
 
 @media(max-width:380px){
@@ -620,7 +660,7 @@ ul,ol{list-style:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
-   NEXUS — OpenRouter Chat Client v3
+   NEXUS — OpenRouter Chat Client v3.1
    Static SPA · No server dependency
    ═══════════════════════════════════════════════════ */
 
@@ -653,11 +693,13 @@ const IC = {
   sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
   archive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
   chevDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`,
+  arrowDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
   search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
   bug: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1"/><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z"/><path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1"/></svg>`,
   paperclip: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>`,
   dollar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`,
   think: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M12 2a7 7 0 00-4 12.7V17a1 1 0 001 1h6a1 1 0 001-1v-2.3A7 7 0 0012 2z"/><line x1="10" y1="22" x2="14" y2="22"/><line x1="11" y1="20" x2="13" y2="20"/></svg>`,
+  help: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
 };
 
 function icon(name) { return `<span class="nx-icon">${IC[name]}</span>`; }
@@ -667,8 +709,14 @@ function icon(name) { return `<span class="nx-icon">${IC[name]}</span>`; }
 // ────────────────────────────────
 const $ = (s, p) => (p || document).querySelector(s);
 const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
-const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxx-xxxx-4xxx'.replace(/x/g, () => (Math.random()*16|0).toString(16));
-const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+const uuid = () => crypto.randomUUID
+  ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
 
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
@@ -688,7 +736,6 @@ function el(tag, attrs = {}, ...children) {
 function formatCost(n) {
   if (!n || n <= 0) return '$0.00';
   if (n < 0.0001) return '< $0.0001';
-  if (n < 0.01) return '$' + n.toFixed(4);
   return '$' + n.toFixed(4);
 }
 
@@ -716,6 +763,36 @@ function toast(msg, type = 'info') {
 
 function isMobile() { return window.innerWidth <= 768; }
 
+// Approximate token count (~4 chars per token in Latin scripts)
+function estimateTokens(text) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 3.8);
+}
+
+// Scroll distance helpers
+function isNearBottom(elem, threshold = 120) {
+  if (!elem) return true;
+  return elem.scrollHeight - elem.scrollTop - elem.clientHeight < threshold;
+}
+
+function scrollToBottom(elem, smooth = false) {
+  if (!elem) return;
+  if (smooth) elem.scrollTo({ top: elem.scrollHeight, behavior: 'smooth' });
+  else elem.scrollTop = elem.scrollHeight;
+}
+
+// Download helper — keeps anchor alive long enough for Safari/Firefox
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 200);
+}
+
 // ────────────────────────────────
 // §3  STORE
 // ────────────────────────────────
@@ -736,6 +813,7 @@ const DEFAULT_SETTINGS = {
   sidebarOpen: true,
   reasoningEnabled: false,
   reasoningEffort: 'medium',
+  modelSort: 'name',
 };
 
 const store = {
@@ -749,6 +827,8 @@ const store = {
   isStreaming: false,
   abortCtrl: null,
   totalCost: parseFloat(localStorage.getItem('nx_total_cost') || '0'),
+  _saveTimer: null,
+  _draftTimer: null,
 
   save() {
     localStorage.setItem('nx_chats', JSON.stringify(this.chats));
@@ -756,9 +836,13 @@ const store = {
     localStorage.setItem('nx_fav_models', JSON.stringify(this.favModels));
     localStorage.setItem('nx_total_cost', String(this.totalCost));
   },
+  saveDebounced(ms = 400) {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => this.save(), ms);
+  },
   getChat() { return this.chats.find(c => c.id === this.activeChatId) || null; },
   newChat(model) {
-    const c = { id: uuid(), title: 'Neuer Chat', model: model || 'openai/gpt-4o-mini', messages: [], createdAt: Date.now(), updatedAt: Date.now(), fav: false, archived: false, tokens: 0, cost: 0 };
+    const c = { id: uuid(), title: 'Neuer Chat', model: model || 'openai/gpt-4o-mini', messages: [], createdAt: Date.now(), updatedAt: Date.now(), fav: false, archived: false, tokens: 0, cost: 0, draft: '' };
     this.chats.unshift(c);
     this.activeChatId = c.id;
     this.save();
@@ -782,7 +866,7 @@ async function fetchModels() {
   const r = await fetch(`${API_BASE}/models`);
   if (!r.ok) throw new Error(`Fehler ${r.status}: ${r.statusText}`);
   const j = await r.json();
-  store.models = (j.data || []).sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+  store.models = (j.data || []).slice();
   store.modelMap = {};
   store.models.forEach(m => store.modelMap[m.id] = m);
   return store.models;
@@ -796,17 +880,12 @@ async function validateKey() {
 }
 
 // ── Reasoning support detection ──
-// Checks whether a model supports reasoning / extended thinking.
 function modelSupportsReasoning(model) {
   if (!model) return false;
-  // 1. OpenRouter's supported_parameters is the authoritative signal
   if (Array.isArray(model.supported_parameters)) {
     const sp = model.supported_parameters;
-    if (sp.includes('reasoning') ||
-        sp.includes('include_reasoning') ||
-        sp.includes('reasoning_effort')) return true;
+    if (sp.includes('reasoning') || sp.includes('include_reasoning') || sp.includes('reasoning_effort')) return true;
   }
-  // 2. Fallback: known reasoning-capable model patterns
   const id = (model.id || '').toLowerCase();
   const name = (model.name || '').toLowerCase();
   const combined = id + ' ' + name;
@@ -824,9 +903,6 @@ function modelSupportsReasoning(model) {
   return patterns.some(p => p.test(combined));
 }
 
-// Returns the effort levels supported by a model. Currently OpenRouter
-// abstracts this across providers, so reasoning-capable models generally
-// accept low/medium/high (Anthropic models translate to thinking budget).
 function getReasoningEfforts(model) {
   if (!modelSupportsReasoning(model)) return [];
   return ['low', 'medium', 'high'];
@@ -840,6 +916,18 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
   store.abortCtrl = ctrl;
   store.isStreaming = true;
 
+  // Wrap callbacks so isStreaming is reset BEFORE user callbacks fire → UI sees correct state.
+  const finishDone = (result) => {
+    store.isStreaming = false;
+    store.abortCtrl = null;
+    try { onDone(result); } catch (e) { console.error('onDone error', e); }
+  };
+  const finishError = (err) => {
+    store.isStreaming = false;
+    store.abortCtrl = null;
+    try { onError(err); } catch (e) { console.error('onError error', e); }
+  };
+
   const body = {
     model,
     messages,
@@ -850,8 +938,6 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
   if (params.maxTokens > 0) body.max_tokens = params.maxTokens;
   if (params.presencePenalty) body.presence_penalty = params.presencePenalty;
   if (params.frequencyPenalty) body.frequency_penalty = params.frequencyPenalty;
-
-  // Reasoning / Extended Thinking (only sent when the model supports it — see sendChatMessage)
   if (params.reasoningEnabled && params.reasoningEffort) {
     body.reasoning = { effort: params.reasoningEffort };
   }
@@ -882,7 +968,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
       const reasoning = j.choices?.[0]?.message?.reasoning || j.choices?.[0]?.message?.reasoning_content || '';
       if (reasoning) onToken(reasoning, 'reasoning');
       onToken(content, 'content');
-      onDone({ usage: j.usage || {}, debug: { request: reqDebug, response: j } });
+      finishDone({ usage: j.usage || {}, debug: { request: reqDebug, response: j } });
       return;
     }
 
@@ -904,9 +990,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
         if (!trimmed || !trimmed.startsWith('data: ')) continue;
         const data = trimmed.slice(6);
         if (data === '[DONE]') {
-          onDone({ usage, debug: { request: reqDebug, response: fullResp } });
-          store.isStreaming = false;
-          store.abortCtrl = null;
+          finishDone({ usage, debug: { request: reqDebug, response: fullResp } });
           return;
         }
         try {
@@ -920,14 +1004,15 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
         } catch {}
       }
     }
-    onDone({ usage, debug: { request: reqDebug, response: fullResp } });
+    finishDone({ usage, debug: { request: reqDebug, response: fullResp } });
   } catch (e) {
     if (e.name === 'AbortError') {
-      onDone({ usage: null, debug: { request: reqDebug, response: 'ABORTED' } });
+      finishDone({ usage: null, debug: { request: reqDebug, response: 'ABORTED' } });
     } else {
-      onError(e);
+      finishError(e);
     }
   } finally {
+    // Safety net — callbacks already reset these, but be defensive
     store.isStreaming = false;
     store.abortCtrl = null;
   }
@@ -966,7 +1051,6 @@ window.nxCopyCode = function(btn) {
   });
 };
 
-/** Global reasoning toggle */
 window.nxToggleReasoning = function(btn) {
   const hdr = btn;
   const wrap = hdr.parentElement.querySelector('.reasoning-body-wrap');
@@ -993,22 +1077,25 @@ let modelCategory = 'all';
 let chatSearch = '';
 let editingMsgId = null;
 let attachedImages = [];
+let lastActiveChatId = null;
 
-// Reasoning effort cycle
+// Reasoning cycle
 const REASONING_CYCLE = ['off', 'low', 'medium', 'high'];
 
-// Reasoning live timer state
+// Streaming timers/metrics
 let reasoningStartTime = null;
 let reasoningTimerInterval = null;
+let streamContentStart = null;
+let streamStatsInterval = null;
 
 function startReasoningTimer() {
   if (reasoningTimerInterval) return;
   reasoningStartTime = Date.now();
   reasoningTimerInterval = setInterval(() => {
-    const el = document.getElementById('r-timer');
-    if (el) {
+    const elT = document.getElementById('r-timer');
+    if (elT) {
       const elapsed = (Date.now() - reasoningStartTime) / 1000;
-      el.textContent = elapsed.toFixed(1) + 's';
+      elT.textContent = elapsed.toFixed(1) + 's';
     }
   }, 100);
 }
@@ -1018,6 +1105,30 @@ function stopReasoningTimer() {
     clearInterval(reasoningTimerInterval);
     reasoningTimerInterval = null;
   }
+}
+
+function startStreamStats() {
+  streamContentStart = Date.now();
+  if (streamStatsInterval) clearInterval(streamStatsInterval);
+  streamStatsInterval = setInterval(updateStreamStats, 300);
+}
+
+function stopStreamStats() {
+  if (streamStatsInterval) {
+    clearInterval(streamStatsInterval);
+    streamStatsInterval = null;
+  }
+}
+
+function updateStreamStats() {
+  const elS = document.getElementById('typing-stats');
+  if (!elS || !streamContentStart) return;
+  const sc = document.getElementById('stream-content');
+  const text = sc?.textContent || '';
+  const tokens = estimateTokens(text);
+  const elapsed = (Date.now() - streamContentStart) / 1000;
+  const tps = elapsed > 0.1 ? (tokens / elapsed).toFixed(1) : '0';
+  elS.innerHTML = `<span>${tokens} tok</span><span class="sep">·</span><span>${tps} tok/s</span>`;
 }
 
 function cycleReasoning() {
@@ -1164,6 +1275,7 @@ function renderAppShell() {
     <div class="main-area" id="main-area">
       <header class="main-header" id="main-header"></header>
       <div class="chat-container" id="chat-container"></div>
+      <button class="scroll-to-bottom-btn" id="scroll-bottom-btn" title="Nach unten">${IC.arrowDown}</button>
       <div class="chat-input-area" id="chat-input-area"></div>
     </div>
     <div class="panel-overlay" id="models-overlay"></div>
@@ -1175,6 +1287,20 @@ function renderAppShell() {
   $('#models-overlay').addEventListener('click', () => toggleModels(false));
   $('#settings-overlay').addEventListener('click', () => toggleSettings(false));
   $('#sidebar-backdrop').addEventListener('click', () => toggleSidebar(false));
+
+  // Chat container scroll handler → scroll-to-bottom button visibility
+  const container = document.getElementById('chat-container');
+  const sbBtn = document.getElementById('scroll-bottom-btn');
+  container.addEventListener('scroll', () => {
+    sbBtn.classList.toggle('visible', !isNearBottom(container, 180));
+    const dot = sbBtn.querySelector('.new-msg-dot');
+    if (dot && isNearBottom(container, 180)) dot.remove();
+  }, { passive: true });
+  sbBtn.addEventListener('click', () => {
+    scrollToBottom(container, true);
+    const dot = sbBtn.querySelector('.new-msg-dot');
+    if (dot) dot.remove();
+  });
 }
 
 function render() {
@@ -1182,6 +1308,7 @@ function render() {
   renderMainHeader();
   renderMessages();
   renderInputArea();
+  lastActiveChatId = store.activeChatId;
 }
 
 // ────────────────────────────────
@@ -1207,6 +1334,12 @@ function renderSidebar() {
   const sb = document.getElementById('sidebar');
   if (!sb) return;
 
+  // Preserve search-input focus & cursor across full rerenders
+  const activeBefore = document.activeElement;
+  const searchWasFocused = activeBefore && activeBefore.id === 'chat-search';
+  const cursorPos = searchWasFocused ? activeBefore.selectionStart : 0;
+  const listScroll = document.getElementById('chat-list')?.scrollTop || 0;
+
   const favChats = store.chats.filter(c => c.fav && !c.archived);
   const recentChats = store.chats.filter(c => !c.fav && !c.archived);
   const archivedChats = store.chats.filter(c => c.archived);
@@ -1222,7 +1355,7 @@ function renderSidebar() {
       <button class="btn-new-chat" id="btn-new-chat">${IC.plus} Neuer Chat</button>
     </div>
     <div class="sidebar-search">
-      <input type="text" placeholder="Chats durchsuchen…" id="chat-search" value="${esc(chatSearch)}">
+      <input type="text" placeholder="Chats durchsuchen…" id="chat-search" value="${esc(chatSearch)}" autocomplete="off" spellcheck="false">
     </div>
     <div class="chat-list" id="chat-list">
       ${favChats.filter(filterFn).length ? `<div class="chat-list-section"><div class="section-label">★ Favoriten</div>${favChats.filter(filterFn).map(chatItemHtml).join('')}</div>` : ''}
@@ -1232,21 +1365,42 @@ function renderSidebar() {
     <div class="sidebar-footer">
       <button id="sb-models">${IC.cpu} Modelle <span style="margin-left:auto;font-family:var(--fm);font-size:.75rem;color:var(--text-3)">${store.models.length}</span></button>
       <button id="sb-costs">${IC.dollar} Kosten <span style="color:var(--accent);font-family:var(--fm);margin-left:auto;font-size:.8rem">${formatCost(store.totalCost)}</span></button>
+      <button id="sb-shortcuts">${IC.help} Shortcuts</button>
       <button id="sb-settings">${IC.settings} Einstellungen</button>
     </div>
   `;
 
+  // Restore scroll
+  const newList = document.getElementById('chat-list');
+  if (newList) newList.scrollTop = listScroll;
+
+  // Restore focus
+  if (searchWasFocused) {
+    const newInp = document.getElementById('chat-search');
+    if (newInp) {
+      newInp.focus();
+      try { newInp.setSelectionRange(cursorPos, cursorPos); } catch {}
+    }
+  }
+
   sb.querySelector('#sb-collapse').onclick = () => toggleSidebar(false);
-  sb.querySelector('#btn-new-chat').onclick = () => { store.newChat(); editingMsgId = null; render(); focusInput(); if (isMobile()) toggleSidebar(false); };
-  sb.querySelector('#chat-search').addEventListener('input', (e) => { chatSearch = e.target.value; renderSidebar(); });
+  sb.querySelector('#btn-new-chat').onclick = () => { attachedImages = []; store.newChat(); editingMsgId = null; render(); focusInput(); if (isMobile()) toggleSidebar(false); };
+  sb.querySelector('#chat-search').addEventListener('input', (e) => {
+    chatSearch = e.target.value;
+    renderSidebar(); // focus restoration handled at top
+  });
   sb.querySelector('#sb-models').onclick = () => { toggleModels(true); if (isMobile()) toggleSidebar(false); };
   sb.querySelector('#sb-settings').onclick = () => { toggleSettings(true); if (isMobile()) toggleSidebar(false); };
   sb.querySelector('#sb-costs').onclick = () => { toggleSettings(true); if (isMobile()) toggleSidebar(false); };
+  sb.querySelector('#sb-shortcuts').onclick = () => { showShortcutsModal(); if (isMobile()) toggleSidebar(false); };
 
   sb.querySelectorAll('.chat-item').forEach(item => {
     const id = item.dataset.id;
     item.addEventListener('click', (e) => {
       if (e.target.closest('.chat-actions')) return;
+      if (store.activeChatId !== id) {
+        attachedImages = []; // clear attachments when switching chats
+      }
       store.activeChatId = id;
       editingMsgId = null;
       render();
@@ -1270,9 +1424,11 @@ function renderSidebar() {
 
 function chatItemHtml(c) {
   const active = c.id === store.activeChatId ? ' active' : '';
+  const draftDot = c.draft && c.draft.trim() ? `<span class="chat-draft-dot" title="Entwurf vorhanden"></span>` : '';
   return `<div class="chat-item${active}" data-id="${c.id}">
     <span class="chat-icon">${IC.chat}</span>
     <span class="chat-title">${esc(c.title)}</span>
+    ${draftDot}
     <span class="chat-actions">
       <button data-action="fav" title="Favorit">${c.fav ? IC.starFill : IC.star}</button>
       <button data-action="rename" title="Umbenennen">${IC.edit}</button>
@@ -1340,6 +1496,8 @@ function renderMessages() {
   const container = document.getElementById('chat-container');
   if (!container) return;
   const chat = store.getChat();
+  const isSameChat = lastActiveChatId === store.activeChatId;
+  const wasAtBottom = isNearBottom(container);
 
   if (!chat || !chat.messages.length) {
     container.innerHTML = '';
@@ -1347,7 +1505,7 @@ function renderMessages() {
     empty.innerHTML = `
       <div class="empty-icon">${IC.logo}</div>
       <h3>Starte ein Gespräch</h3>
-      <p>Wähle ein Modell über die Kopfleiste, gib deine Nachricht ein und los geht's.</p>
+      <p>Wähle ein Modell über die Kopfleiste, gib deine Nachricht ein und los geht's.<br><br>Drücke <span class="kbd">?</span> für alle Shortcuts.</p>
     `;
     container.appendChild(empty);
     return;
@@ -1368,13 +1526,13 @@ function renderMessages() {
 
   highlightCode(msgContainer);
 
-  if (store.settings.autoScroll) {
+  // Smart scroll: always scroll to bottom when switching chats;
+  // otherwise only if user was near bottom.
+  if (store.settings.autoScroll && (!isSameChat || wasAtBottom)) {
     requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
   }
 }
 
-// Splits a reasoning text into visual "steps" (based on paragraph breaks).
-// Used to render the timeline with connecting lines and dot icons.
 function parseReasoningSteps(text) {
   if (!text) return [];
   const parts = text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
@@ -1425,7 +1583,8 @@ function buildReasoningBlockHtml(reasoning, isStreaming) {
 }
 
 function createMessageEl(msg, chat) {
-  const div = el('div', { className: `msg msg-${msg.role}` });
+  const errorClass = msg.error ? ' msg-error' : '';
+  const div = el('div', { className: `msg msg-${msg.role}${errorClass}` });
   const isEditing = editingMsgId === msg.id;
 
   if (isEditing) {
@@ -1456,7 +1615,6 @@ function createMessageEl(msg, chat) {
     return div;
   }
 
-  // Content
   let contentHtml;
   if (msg.role === 'assistant') {
     contentHtml = renderMd(msg.content);
@@ -1464,19 +1622,16 @@ function createMessageEl(msg, chat) {
     contentHtml = `<p>${esc(msg.content).replace(/\n/g, '<br>')}</p>`;
   }
 
-  // Reasoning block
   let reasoningHtml = '';
   if (msg.reasoning && msg.reasoning.length > 0) {
     reasoningHtml = buildReasoningBlockHtml(msg.reasoning, false);
   }
 
-  // Attached images
   let imagesHtml = '';
   if (msg.images && msg.images.length) {
     imagesHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${msg.images.map(img => `<img src="${img.data}" alt="${esc(img.name)}" style="max-width:200px;max-height:150px;border-radius:var(--radius-s);object-fit:cover;border:1px solid var(--border-1)">`).join('')}</div>`;
   }
 
-  // Meta
   let metaParts = [];
   if (msg.role === 'assistant') {
     if (msg.model) { const m = store.modelMap[msg.model]; metaParts.push(m ? (m.name || m.id).split('/').pop() : msg.model.split('/').pop()); }
@@ -1490,19 +1645,19 @@ function createMessageEl(msg, chat) {
   let actionsHtml = `<span class="msg-actions">`;
   actionsHtml += `<button data-act="copy" title="Kopieren">${IC.copy}</button>`;
   if (msg.role === 'user') actionsHtml += `<button data-act="edit" title="Bearbeiten">${IC.edit}</button>`;
-  if (msg.role === 'assistant') actionsHtml += `<button data-act="regen" title="Neu generieren">${IC.refresh}</button>`;
+  if (msg.role === 'assistant' && !msg.error) actionsHtml += `<button data-act="regen" title="Neu generieren">${IC.refresh}</button>`;
+  if (msg.error) actionsHtml += `<button data-act="retry" title="Erneut versuchen">${IC.refresh}</button>`;
   actionsHtml += `<button data-act="del" title="Löschen">${IC.trash}</button>`;
   actionsHtml += `</span>`;
 
   div.innerHTML = `
-    <div class="msg-role">${msg.role === 'user' ? 'Du' : msg.role === 'assistant' ? 'Assistent' : msg.role}</div>
+    <div class="msg-role">${msg.role === 'user' ? 'Du' : msg.role === 'assistant' ? (msg.error ? 'Fehler' : 'Assistent') : msg.role}</div>
     ${reasoningHtml}
     <div class="msg-content">${contentHtml}</div>
     ${imagesHtml}
     <div class="msg-meta"><span>${metaParts.join(' · ')}</span>${actionsHtml}</div>
   `;
 
-  // Debug
   if (store.settings.showDebug && msg.debug) {
     const dbg = el('div', { className: 'debug-panel' });
     const contentDiv = el('div', { className: 'debug-content', style: 'display:none' });
@@ -1519,13 +1674,13 @@ function createMessageEl(msg, chat) {
     div.appendChild(dbg);
   }
 
-  // Action handlers
   div.querySelectorAll('[data-act]').forEach(btn => {
     btn.addEventListener('click', () => {
       const act = btn.dataset.act;
       if (act === 'copy') navigator.clipboard.writeText(msg.content).then(() => toast('Kopiert!', 'success'));
       if (act === 'edit') { editingMsgId = msg.id; renderMessages(); }
       if (act === 'regen') regenerateMessage(msg, chat);
+      if (act === 'retry') retryMessage(msg, chat);
       if (act === 'del') { chat.messages = chat.messages.filter(m => m.id !== msg.id); store.save(); renderMessages(); }
     });
   });
@@ -1533,7 +1688,7 @@ function createMessageEl(msg, chat) {
   return div;
 }
 
-// ── Streaming Indicator with Reasoning ──
+// ── Streaming Indicator ──
 function showTypingIndicator() {
   const container = document.getElementById('chat-messages');
   if (!container) return null;
@@ -1544,7 +1699,10 @@ function showTypingIndicator() {
       <div class="msg-role">Assistent</div>
       <div id="stream-reasoning-wrap" style="display:none"></div>
       <div class="msg-content" id="stream-content"></div>
-      <div class="typing-indicator" id="typing-dots"><span></span><span></span><span></span></div>
+      <div style="display:flex;align-items:center">
+        <div class="typing-indicator" id="typing-dots"><span></span><span></span><span></span></div>
+        <div class="typing-stats" id="typing-stats"></div>
+      </div>
     `;
     container.appendChild(ind);
   }
@@ -1565,8 +1723,7 @@ function updateStreamReasoning(text) {
       inner.innerHTML = `<div class="r-timeline">${buildStepsHtml(steps, true)}</div>`;
     }
   }
-  const chatC = document.getElementById('chat-container');
-  if (chatC && store.settings.autoScroll) chatC.scrollTop = chatC.scrollHeight;
+  maybeAutoScroll();
 }
 
 function finalizeStreamReasoning() {
@@ -1581,7 +1738,6 @@ function finalizeStreamReasoning() {
   const label = block.querySelector('.r-label');
   if (label) label.textContent = 'Denkprozess';
 
-  // Freeze timer as static meta badge
   const timer = block.querySelector('#r-timer');
   if (timer && reasoningStartTime) {
     const elapsed = ((Date.now() - reasoningStartTime) / 1000).toFixed(1) + 's';
@@ -1590,7 +1746,6 @@ function finalizeStreamReasoning() {
     timer.textContent = elapsed;
   }
 
-  // Transition all steps to completed
   block.querySelectorAll('.r-step').forEach(s => {
     s.classList.remove('active');
     s.classList.add('completed');
@@ -1602,15 +1757,34 @@ function updateStreamContent(text) {
   const dots = document.getElementById('typing-dots');
   if (sc) sc.innerHTML = renderMd(text);
   if (dots && text.length > 0) dots.style.display = 'none';
-  // Reasoning done when content starts
   finalizeStreamReasoning();
+  if (!streamContentStart) startStreamStats();
+  maybeAutoScroll();
+}
+
+function maybeAutoScroll() {
   const chatC = document.getElementById('chat-container');
-  if (chatC && store.settings.autoScroll) chatC.scrollTop = chatC.scrollHeight;
+  if (!chatC) return;
+  if (!store.settings.autoScroll) return;
+  // Only auto-scroll if user is already close to bottom
+  if (isNearBottom(chatC, 200)) {
+    chatC.scrollTop = chatC.scrollHeight;
+  } else {
+    // Show the "new message" dot on scroll-to-bottom button
+    const btn = document.getElementById('scroll-bottom-btn');
+    if (btn && btn.classList.contains('visible') && !btn.querySelector('.new-msg-dot')) {
+      const dot = document.createElement('span');
+      dot.className = 'new-msg-dot';
+      btn.appendChild(dot);
+    }
+  }
 }
 
 function removeTypingIndicator() {
   const ind = document.getElementById('typing-ind');
   if (ind) ind.remove();
+  stopStreamStats();
+  streamContentStart = null;
 }
 
 // ────────────────────────────────
@@ -1620,7 +1794,13 @@ function renderInputArea() {
   const area = document.getElementById('chat-input-area');
   if (!area) return;
 
-  // Determine whether the current model supports reasoning
+  // Preserve focus on textarea across rerenders triggered by same chat
+  // (e.g. reasoning toggle). Draft is loaded from chat.draft regardless,
+  // so cross-chat rerenders correctly show the new chat's draft.
+  const prevTa = document.getElementById('msg-input');
+  const prevHadFocus = prevTa && document.activeElement === prevTa;
+  const prevCursor = prevTa ? prevTa.selectionStart : 0;
+
   const chat = store.getChat();
   const currentModel = chat ? store.modelMap[chat.model] : null;
   const supportsReasoning = modelSupportsReasoning(currentModel);
@@ -1639,14 +1819,15 @@ function renderInputArea() {
     <div class="chat-input-wrap">
       <div class="attached-preview" id="attached-preview" style="display:none"></div>
       <div class="chat-input-box" id="input-box">
-        <button class="attach-btn" id="btn-attach" title="Bild anhängen">${IC.paperclip}</button>
+        <button class="attach-btn" id="btn-attach" title="Bild anhängen (oder per Strg+V einfügen)">${IC.paperclip}</button>
         ${reasoningBtnHtml}
-        <textarea id="msg-input" rows="1" placeholder="Nachricht eingeben…"></textarea>
+        <textarea id="msg-input" rows="1" placeholder="Nachricht eingeben… (Strg+V für Bild)"></textarea>
         <button class="send-btn" id="btn-send" disabled>${IC.send}</button>
       </div>
       <div class="input-info">
-        <span id="input-model">${store.getChat()?.model?.split('/').pop() || ''}</span>
-        <span class="desktop-only">Enter senden · Shift+Enter Zeile</span>
+        <span id="input-model">${esc(chat?.model?.split('/').pop() || '')}</span>
+        <span class="tokens" id="input-tokens">~0 tok</span>
+        <span class="desktop-only">Enter senden · Shift+Enter Zeile · ? Hilfe</span>
       </div>
       <input type="file" id="file-input" accept="image/*" style="display:none" multiple>
     </div>
@@ -1658,28 +1839,75 @@ function renderInputArea() {
   const fileInput = area.querySelector('#file-input');
   const reasoningBtn = area.querySelector('#btn-reasoning');
 
+  // Load draft
+  if (chat && chat.draft) {
+    ta.value = chat.draft;
+    requestAnimationFrame(() => {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+    });
+  }
+
+  // Restore focus if same chat
+  if (prevHadFocus) {
+    ta.focus();
+    try { ta.setSelectionRange(prevCursor, prevCursor); } catch {}
+  }
+
   ta.addEventListener('input', () => {
     ta.style.height = 'auto';
     ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
     updateSendBtn();
+    updateInputTokenCount();
+    // Persist draft (debounced)
+    const c = store.getChat();
+    if (c) {
+      c.draft = ta.value;
+      store.saveDebounced(500);
+    }
   });
 
   ta.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !isMobile()) {
       e.preventDefault();
       if (store.isStreaming) stopStreaming();
-      else if (ta.value.trim()) handleSend();
+      else if (ta.value.trim() || attachedImages.length) handleSend();
     }
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       if (store.isStreaming) stopStreaming();
-      else if (ta.value.trim()) handleSend();
+      else if (ta.value.trim() || attachedImages.length) handleSend();
     }
+  });
+
+  // Paste images directly into input
+  ta.addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    let handled = false;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        handled = true;
+        const reader = new FileReader();
+        reader.onload = () => {
+          attachedImages.push({
+            name: blob.name || `pasted-${Date.now()}.png`,
+            data: reader.result
+          });
+          updateAttachedPreview();
+          updateSendBtn();
+        };
+        reader.readAsDataURL(blob);
+      }
+    }
+    if (handled) e.preventDefault();
   });
 
   sendBtn.addEventListener('click', () => {
     if (store.isStreaming) stopStreaming();
-    else if (ta.value.trim()) handleSend();
+    else if (ta.value.trim() || attachedImages.length) handleSend();
   });
 
   attachBtn.addEventListener('click', () => fileInput.click());
@@ -1688,6 +1916,25 @@ function renderInputArea() {
   if (reasoningBtn) reasoningBtn.addEventListener('click', cycleReasoning);
 
   updateAttachedPreview();
+  updateSendBtn();
+  updateInputTokenCount();
+}
+
+function updateInputTokenCount() {
+  const ta = document.getElementById('msg-input');
+  const lbl = document.getElementById('input-tokens');
+  if (!ta || !lbl) return;
+  const chat = store.getChat();
+  // Approximate: current input + system prompt + full history
+  let totalChars = ta.value.length;
+  totalChars += (store.settings.systemPrompt || '').length;
+  if (chat) for (const m of chat.messages) totalChars += (m.content || '').length;
+  const tok = Math.ceil(totalChars / 3.8);
+  lbl.textContent = `~${formatTokens(tok)} tok`;
+  // Warn if approaching model context (best-effort)
+  const model = chat ? store.modelMap[chat.model] : null;
+  const ctx = model?.context_length || 0;
+  lbl.classList.toggle('warn', ctx > 0 && tok > ctx * 0.8);
 }
 
 function updateSendBtn() {
@@ -1763,6 +2010,10 @@ async function handleSend() {
   if (!content && !attachedImages.length) return;
   ta.value = '';
   ta.style.height = 'auto';
+  // Clear draft for this chat
+  const c = store.getChat();
+  if (c) { c.draft = ''; store.save(); }
+  updateInputTokenCount();
   sendChatMessage(content, false);
 }
 
@@ -1786,13 +2037,13 @@ async function sendChatMessage(content, isResend) {
   store.save();
   renderSidebar();
   renderMessages();
-  updateSendBtn();
 
   // Build API messages
   const apiMsgs = [];
   if (store.settings.systemPrompt) apiMsgs.push({ role: 'system', content: store.settings.systemPrompt });
 
   for (const m of chat.messages) {
+    if (m.error) continue; // never feed error bubbles back to API
     if (m.role === 'user') {
       if (m.images && m.images.length) {
         apiMsgs.push({
@@ -1811,79 +2062,92 @@ async function sendChatMessage(content, isResend) {
   }
 
   showTypingIndicator();
-  updateSendBtn();
 
   let fullText = '';
   let reasoningText = '';
   const startTime = Date.now();
 
-  // Only send the reasoning parameter when the current model actually supports it.
   const currentModel = store.modelMap[chat.model];
   const effectiveParams = { ...store.settings };
   if (!modelSupportsReasoning(currentModel)) {
     effectiveParams.reasoningEnabled = false;
   }
 
-  await streamChat(
-    apiMsgs, chat.model, effectiveParams,
-    (token, type) => {
-      if (type === 'reasoning') {
-        reasoningText += token;
-        updateStreamReasoning(reasoningText);
-      } else {
-        fullText += token;
-        updateStreamContent(fullText);
-      }
-    },
-    (info) => {
-      stopReasoningTimer();
-      removeTypingIndicator();
-      const duration = Date.now() - startTime;
-      const usage = info.usage || {};
-      const promptTokens = usage.prompt_tokens || 0;
-      const compTokens = usage.completion_tokens || 0;
-
-      const model = store.modelMap[chat.model];
-      let cost = 0;
-      if (model?.pricing) {
-        const pp = parseFloat(model.pricing.prompt) || 0;
-        const cp = parseFloat(model.pricing.completion) || 0;
-        cost = (promptTokens * pp) + (compTokens * cp);
-      }
-
-      const assistantMsg = {
-        id: uuid(), role: 'assistant', content: fullText, ts: Date.now(),
-        reasoning: reasoningText || undefined,
-        tokens: { prompt: promptTokens, completion: compTokens },
-        cost, model: chat.model, duration,
-        debug: store.settings.showDebug ? info.debug : undefined,
-      };
-      chat.messages.push(assistantMsg);
-      chat.tokens += promptTokens + compTokens;
-      chat.cost += cost;
-      store.totalCost += cost;
-      store.save();
-      renderMessages();
-      renderSidebar();
-      renderMainHeader();
-      updateSendBtn();
-    },
-    (err) => {
-      stopReasoningTimer();
-      removeTypingIndicator();
-      const errMsg = { id: uuid(), role: 'assistant', content: `**Fehler:** ${err.message}\n\nBitte überprüfe dein Modell und deinen API Key.`, ts: Date.now() };
-      chat.messages.push(errMsg);
-      store.save();
-      renderMessages();
-      toast('Fehler: ' + err.message, 'error');
-      updateSendBtn();
+  const onToken = (token, type) => {
+    if (type === 'reasoning') {
+      reasoningText += token;
+      updateStreamReasoning(reasoningText);
+    } else {
+      fullText += token;
+      updateStreamContent(fullText);
     }
-  );
+  };
+
+  const onDone = (info) => {
+    stopReasoningTimer();
+    removeTypingIndicator();
+    const duration = Date.now() - startTime;
+    const usage = info.usage || {};
+    const promptTokens = usage.prompt_tokens || 0;
+    const compTokens = usage.completion_tokens || 0;
+
+    const model = store.modelMap[chat.model];
+    let cost = 0;
+    if (model?.pricing) {
+      const pp = parseFloat(model.pricing.prompt) || 0;
+      const cp = parseFloat(model.pricing.completion) || 0;
+      cost = (promptTokens * pp) + (compTokens * cp);
+    }
+
+    // If nothing was returned (aborted early) skip pushing an empty msg
+    if (!fullText.trim() && !reasoningText.trim()) {
+      renderMessages();
+      return;
+    }
+
+    const assistantMsg = {
+      id: uuid(), role: 'assistant', content: fullText, ts: Date.now(),
+      reasoning: reasoningText || undefined,
+      tokens: { prompt: promptTokens, completion: compTokens },
+      cost, model: chat.model, duration,
+      debug: store.settings.showDebug ? info.debug : undefined,
+    };
+    chat.messages.push(assistantMsg);
+    chat.tokens += promptTokens + compTokens;
+    chat.cost += cost;
+    store.totalCost += cost;
+    store.save();
+    renderMessages();
+    renderSidebar();
+    renderMainHeader();
+    updateInputTokenCount();
+  };
+
+  const onError = (err) => {
+    stopReasoningTimer();
+    removeTypingIndicator();
+    const errMsg = {
+      id: uuid(), role: 'assistant',
+      content: `**Fehler:** ${err.message}\n\nBitte überprüfe dein Modell und deinen API Key.`,
+      ts: Date.now(), error: true
+    };
+    chat.messages.push(errMsg);
+    store.save();
+    renderMessages();
+    toast('Fehler: ' + err.message, 'error');
+  };
+
+  // Fix: start stream first so isStreaming=true BEFORE updateSendBtn runs.
+  const streamPromise = streamChat(apiMsgs, chat.model, effectiveParams, onToken, onDone, onError);
+  updateSendBtn();
+  await streamPromise;
+  updateSendBtn();
 }
 
 function stopStreaming() {
   if (store.abortCtrl) { store.abortCtrl.abort(); store.abortCtrl = null; }
   stopReasoningTimer();
+  stopStreamStats();
 }
 
 function regenerateMessage(msg, chat) {
@@ -1896,6 +2160,18 @@ function regenerateMessage(msg, chat) {
   if (lastUser) sendChatMessage(lastUser.content, true);
 }
 
+function retryMessage(msg, chat) {
+  const idx = chat.messages.indexOf(msg);
+  if (idx < 0) return;
+  // Remove the error message, then resend last user input
+  chat.messages.splice(idx, 1);
+  store.save();
+  renderMessages();
+  const lastUser = [...chat.messages].reverse().find(m => m.role === 'user');
+  if (lastUser) sendChatMessage(lastUser.content, true);
+  else toast('Keine vorherige Nachricht zum Wiederholen.', 'info');
+}
+
 // ────────────────────────────────
 // §15  EXPORT
 // ────────────────────────────────
@@ -1905,15 +2181,13 @@ function exportChat() {
   let md = `# ${chat.title}\n\n`;
   md += `**Modell:** ${chat.model}\n**Erstellt:** ${new Date(chat.createdAt).toLocaleString('de')}\n\n---\n\n`;
   for (const m of chat.messages) {
+    if (m.error) continue;
     if (m.reasoning) md += `<details><summary>Denkprozess</summary>\n\n${m.reasoning}\n\n</details>\n\n`;
     md += `### ${m.role === 'user' ? 'Du' : 'Assistent'}\n\n${m.content}\n\n---\n\n`;
   }
   const blob = new Blob([md], { type: 'text/markdown' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${chat.title.replace(/[^a-zA-Z0-9äöüÄÖÜß -]/g, '_')}.md`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const filename = `${chat.title.replace(/[^a-zA-Z0-9äöüÄÖÜß -]/g, '_')}.md`;
+  downloadBlob(blob, filename);
   toast('Chat exportiert', 'success');
 }
 
@@ -1949,8 +2223,16 @@ const MODEL_CATEGORIES = [
   { key: 'mistral', label: 'Mistral' },
 ];
 
+const MODEL_SORTS = [
+  { key: 'name', label: 'Name A–Z' },
+  { key: 'price-asc', label: 'Preis ↑' },
+  { key: 'price-desc', label: 'Preis ↓' },
+  { key: 'ctx-desc', label: 'Kontext ↓' },
+  { key: 'newest', label: 'Neueste zuerst' },
+];
+
 function filterModels() {
-  let list = store.models;
+  let list = store.models.slice();
   const q = modelFilter.toLowerCase();
   if (q) list = list.filter(m => (m.name || m.id).toLowerCase().includes(q) || m.id.toLowerCase().includes(q));
 
@@ -1961,14 +2243,26 @@ function filterModels() {
   else if (modelCategory === 'large') list = list.filter(m => (m.context_length || 0) >= 100000);
   else if (['openai','anthropic','google','meta','mistral'].includes(modelCategory)) list = list.filter(m => m.id.toLowerCase().includes(modelCategory));
 
+  const sort = store.settings.modelSort || 'name';
+  list.sort((a, b) => {
+    if (sort === 'price-asc' || sort === 'price-desc') {
+      const pa = (parseFloat(a.pricing?.prompt || '0') + parseFloat(a.pricing?.completion || '0'));
+      const pb = (parseFloat(b.pricing?.prompt || '0') + parseFloat(b.pricing?.completion || '0'));
+      return sort === 'price-asc' ? pa - pb : pb - pa;
+    }
+    if (sort === 'ctx-desc') {
+      return (b.context_length || 0) - (a.context_length || 0);
+    }
+    if (sort === 'newest') {
+      return (b.created || 0) - (a.created || 0);
+    }
+    // name (default)
+    return (a.name || a.id).localeCompare(b.name || b.id);
+  });
+
   return list;
 }
 
-// ── FIX: Search no longer loses focus on every keystroke ──
-// The previous implementation re-rendered the entire panel (including
-// the search input itself) on every input event, which destroyed the
-// active element. We now split rendering: the panel scaffolding is
-// built once, and only the grid is updated on filter changes.
 function renderModelsPanel() {
   const panel = document.getElementById('models-panel');
   if (!panel) return;
@@ -1983,6 +2277,12 @@ function renderModelsPanel() {
       <div class="filter-chips" id="filter-chips">
         ${MODEL_CATEGORIES.map(c => `<span class="filter-chip${modelCategory === c.key ? ' active' : ''}" data-cat="${c.key}">${c.label}</span>`).join('')}
       </div>
+      <div class="models-sort-row">
+        <span class="count" id="models-count"></span>
+        <select id="model-sort" title="Sortieren nach">
+          ${MODEL_SORTS.map(s => `<option value="${s.key}"${store.settings.modelSort === s.key ? ' selected' : ''}>${s.label}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="models-grid" id="models-grid"></div>
   `;
@@ -1990,7 +2290,6 @@ function renderModelsPanel() {
   panel.querySelector('#close-models').onclick = () => toggleModels(false);
 
   const searchInput = panel.querySelector('#model-search');
-  // Only update the grid — NOT the whole panel — so the input keeps focus.
   searchInput.addEventListener('input', (e) => {
     modelFilter = e.target.value;
     updateModelsGrid();
@@ -1999,7 +2298,6 @@ function renderModelsPanel() {
     if (document.activeElement !== searchInput) searchInput.focus();
   }, 100);
 
-  // Category chip clicks — only update active state + grid
   panel.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       modelCategory = chip.dataset.cat;
@@ -2010,12 +2308,15 @@ function renderModelsPanel() {
     });
   });
 
+  panel.querySelector('#model-sort').addEventListener('change', (e) => {
+    store.settings.modelSort = e.target.value;
+    store.save();
     updateModelsGrid();
+  });
+
+  updateModelsGrid();
 }
 
-// Renders only the grid content — called on every search keystroke
-// and category change. Keeps the search input untouched so focus is
-// never lost mid-typing.
 function updateModelsGrid() {
   const grid = document.getElementById('models-grid');
   if (!grid) return;
@@ -2023,6 +2324,9 @@ function updateModelsGrid() {
   const chat = store.getChat();
   const currentModel = chat?.model;
   const filtered = filterModels();
+
+  const countEl = document.getElementById('models-count');
+  if (countEl) countEl.textContent = `${filtered.length} Treffer`;
 
   grid.innerHTML = `
     ${filtered.length === 0 ? '<p style="padding:20px;color:var(--text-3);text-align:center">Keine Modelle gefunden</p>' : ''}
@@ -2049,8 +2353,6 @@ function updateModelsGrid() {
       if (idx >= 0) store.favModels.splice(idx, 1);
       else store.favModels.push(id);
       store.save();
-      // Only re-render the affected card area — but since favorite state
-      // can affect the "Favoriten" filter, simply refresh the grid.
       updateModelsGrid();
     });
   });
@@ -2161,7 +2463,7 @@ function renderSettingsPanel() {
           <label class="switch"><input type="checkbox" id="set-stream" ${s.streaming ? 'checked' : ''}><span class="slider"></span></label>
         </div>
         <div class="toggle-row">
-          <div><div class="tl">Auto-Scroll</div><div class="td">Automatisch zum Ende scrollen</div></div>
+          <div><div class="tl">Auto-Scroll</div><div class="td">Automatisch zum Ende scrollen (nur wenn schon unten)</div></div>
           <label class="switch"><input type="checkbox" id="set-autoscroll" ${s.autoScroll ? 'checked' : ''}><span class="slider"></span></label>
         </div>
         <div class="toggle-row">
@@ -2185,13 +2487,17 @@ function renderSettingsPanel() {
             <span>Gesamtkosten (geschätzt)</span>
             <span style="font-family:var(--fm);color:var(--accent);font-weight:600">${formatCost(store.totalCost)}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:.88rem">
+                    <div style="display:flex;justify-content:space-between;font-size:.88rem">
             <span>Chats gesamt</span>
             <span style="font-family:var(--fm);color:var(--text-2)">${store.chats.length}</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:.88rem">
             <span>Modelle geladen</span>
             <span style="font-family:var(--fm);color:var(--text-2)">${store.models.length}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.88rem">
+            <span>Favorisierte Modelle</span>
+            <span style="font-family:var(--fm);color:var(--text-2)">${store.favModels.length}</span>
           </div>
         </div>
       </div>
@@ -2222,7 +2528,11 @@ function renderSettingsPanel() {
 
   // Events
   panel.querySelector('#close-settings').onclick = () => toggleSettings(false);
-  panel.querySelector('#set-sysprompt').addEventListener('input', (e) => { s.systemPrompt = e.target.value; store.save(); });
+  panel.querySelector('#set-sysprompt').addEventListener('input', (e) => {
+    s.systemPrompt = e.target.value;
+    store.saveDebounced(400);
+    updateInputTokenCount();
+  });
 
   // Sliders
   const bindSlider = (id, key, lblId, fmt) => {
@@ -2233,7 +2543,7 @@ function renderSettingsPanel() {
       const v = parseFloat(inp.value);
       s[key] = v;
       lbl.textContent = fmt(v);
-      store.save();
+      store.saveDebounced(400);
     });
   };
   bindSlider('#set-temp', 'temperature', '#lbl-temp', fmtTemp);
@@ -2244,9 +2554,9 @@ function renderSettingsPanel() {
 
   // Toggles
   const bindToggle = (id, key, callback) => {
-    const el = panel.querySelector(id);
-    if (!el) return;
-    el.addEventListener('change', (e) => { s[key] = e.target.checked; store.save(); if (callback) callback(); });
+    const elT = panel.querySelector(id);
+    if (!elT) return;
+    elT.addEventListener('change', (e) => { s[key] = e.target.checked; store.save(); if (callback) callback(); });
   };
   bindToggle('#set-stream', 'streaming');
   bindToggle('#set-autoscroll', 'autoScroll');
@@ -2276,13 +2586,16 @@ function renderSettingsPanel() {
   };
 
   panel.querySelector('#set-export-all').onclick = () => {
-    const data = { settings: store.settings, chats: store.chats, favModels: store.favModels, totalCost: store.totalCost };
+    const data = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      settings: store.settings,
+      chats: store.chats,
+      favModels: store.favModels,
+      totalCost: store.totalCost
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'nexus-export.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadBlob(blob, `nexus-export-${new Date().toISOString().slice(0,10)}.json`);
     toast('Daten exportiert', 'success');
   };
 
@@ -2352,25 +2665,103 @@ function showRenameModal(chatId) {
 }
 
 // ────────────────────────────────
+// §18b  SHORTCUTS MODAL
+// ────────────────────────────────
+function showShortcutsModal() {
+  // Prevent duplicates
+  if (document.querySelector('.shortcuts-modal-overlay')) return;
+
+  const overlay = el('div', { className: 'modal-overlay shortcuts-modal-overlay' });
+  const modal = el('div', { className: 'modal shortcuts-modal' });
+  modal.innerHTML = `
+    <h2>${IC.help} Tastatur-Shortcuts</h2>
+    <table class="kbd-table">
+      <tr><td>Nachricht senden</td><td><span class="kbd">Enter</span></td></tr>
+      <tr><td>Neue Zeile</td><td><span class="kbd">Shift</span><span class="kbd">Enter</span></td></tr>
+      <tr><td>Senden (auch mobil)</td><td><span class="kbd">Strg</span><span class="kbd">Enter</span></td></tr>
+      <tr><td>Streaming stoppen</td><td><span class="kbd">Enter</span> (während Generierung)</td></tr>
+      <tr><td>Neuer Chat</td><td><span class="kbd">Strg</span><span class="kbd">Shift</span><span class="kbd">N</span></td></tr>
+      <tr><td>Chat-Suche fokussieren</td><td><span class="kbd">Strg</span><span class="kbd">/</span></td></tr>
+      <tr><td>Modelle-Panel</td><td><span class="kbd">Strg</span><span class="kbd">M</span></td></tr>
+      <tr><td>Einstellungen</td><td><span class="kbd">Strg</span><span class="kbd">,</span></td></tr>
+      <tr><td>Bild einfügen</td><td><span class="kbd">Strg</span><span class="kbd">V</span> (im Input)</td></tr>
+      <tr><td>Diese Hilfe</td><td><span class="kbd">?</span></td></tr>
+      <tr><td>Panels/Modals schließen</td><td><span class="kbd">Esc</span></td></tr>
+    </table>
+    <div class="modal-btns" style="margin-top:20px">
+      <button class="btn-confirm">Schließen</button>
+    </div>
+  `;
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  modal.querySelector('.btn-confirm').onclick = close;
+  // Escape handled by overlay click on any Esc press (see global handler below too)
+  setTimeout(() => modal.querySelector('.btn-confirm').focus(), 50);
+}
+
+function closeTopModal() {
+  const m = document.querySelector('.modal-overlay');
+  if (m) { m.remove(); return true; }
+  return false;
+}
+
+// ────────────────────────────────
 // §19  KEYBOARD SHORTCUTS
 // ────────────────────────────────
 document.addEventListener('keydown', (e) => {
+  const isTypingTag = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+  const isEditable = document.activeElement?.isContentEditable;
+  const isTyping = isTypingTag || isEditable;
+
+  // Ctrl+Shift+N → new chat
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
     e.preventDefault();
+    attachedImages = [];
     store.newChat();
     editingMsgId = null;
     render();
     focusInput();
+    return;
   }
+
+  // Escape closes modals → panels → edit
   if (e.key === 'Escape') {
-    if (modelsVisible) toggleModels(false);
-    else if (settingsVisible) toggleSettings(false);
-    else if (editingMsgId) { editingMsgId = null; renderMessages(); }
+    if (closeTopModal()) return;
+    if (modelsVisible) { toggleModels(false); return; }
+    if (settingsVisible) { toggleSettings(false); return; }
+    if (editingMsgId) { editingMsgId = null; renderMessages(); return; }
   }
+
+  // Ctrl+/ → focus chat-search
   if ((e.ctrlKey || e.metaKey) && e.key === '/') {
     e.preventDefault();
     const sb = document.getElementById('chat-search');
-    if (sb) { toggleSidebar(true); sb.focus(); }
+    if (sb) { toggleSidebar(true); setTimeout(() => sb.focus(), 50); }
+    return;
+  }
+
+  // Ctrl+M → toggle models panel
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'm') {
+    e.preventDefault();
+    toggleModels(!modelsVisible);
+    return;
+  }
+
+  // Ctrl+, → settings panel
+  if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+    e.preventDefault();
+    toggleSettings(!settingsVisible);
+    return;
+  }
+
+  // ? (shift+/) → shortcuts help — only when not typing
+  if (e.key === '?' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    showShortcutsModal();
+    return;
   }
 });
 
@@ -2394,7 +2785,32 @@ window.addEventListener('resize', () => {
 });
 
 // ────────────────────────────────
-// §21  INIT
+// §21  BEFORE UNLOAD — persist drafts immediately
+// ────────────────────────────────
+window.addEventListener('beforeunload', () => {
+  const ta = document.getElementById('msg-input');
+  const chat = store.getChat();
+  if (ta && chat) {
+    chat.draft = ta.value;
+  }
+  // Flush any pending debounced save
+  if (store._saveTimer) { clearTimeout(store._saveTimer); store._saveTimer = null; }
+  if (store._draftTimer) { clearTimeout(store._draftTimer); store._draftTimer = null; }
+  store.save();
+});
+
+// Also persist drafts when tab becomes hidden (mobile background, etc.)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    const ta = document.getElementById('msg-input');
+    const chat = store.getChat();
+    if (ta && chat) chat.draft = ta.value;
+    store.save();
+  }
+});
+
+// ────────────────────────────────
+// §22  INIT
 // ────────────────────────────────
 renderKeyScreen();
 </script>
