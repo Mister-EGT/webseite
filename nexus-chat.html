@@ -2,7 +2,7 @@
 <html lang="de" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Nexus · OpenRouter Chat</title>
@@ -658,6 +658,7 @@ ul,ol{list-style:none}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════
    NEXUS — OpenRouter Chat Client v3.1
@@ -793,6 +794,42 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 200);
 }
 
+function safeJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn(`Ungültige lokale Daten in ${key}:`, err);
+    localStorage.removeItem(key);
+    return fallback;
+  }
+}
+
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    ta.style.pointerEvents = 'none';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (err) {
+    console.error('Kopieren fehlgeschlagen:', err);
+    return false;
+  }
+}
+
 // ────────────────────────────────
 // §3  STORE
 // ────────────────────────────────
@@ -820,21 +857,26 @@ const store = {
   apiKey: '',
   models: [],
   modelMap: {},
-  favModels: JSON.parse(localStorage.getItem('nx_fav_models') || '[]'),
-  chats: JSON.parse(localStorage.getItem('nx_chats') || '[]'),
+  favModels: safeJson('nx_fav_models', []),
+  chats: safeJson('nx_chats', []),
   activeChatId: null,
-  settings: { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('nx_settings') || '{}') },
+  settings: { ...DEFAULT_SETTINGS, ...safeJson('nx_settings', {}) },
   isStreaming: false,
   abortCtrl: null,
-  totalCost: parseFloat(localStorage.getItem('nx_total_cost') || '0'),
+  totalCost: Number(localStorage.getItem('nx_total_cost')) || 0,
   _saveTimer: null,
   _draftTimer: null,
 
   save() {
-    localStorage.setItem('nx_chats', JSON.stringify(this.chats));
-    localStorage.setItem('nx_settings', JSON.stringify(this.settings));
-    localStorage.setItem('nx_fav_models', JSON.stringify(this.favModels));
-    localStorage.setItem('nx_total_cost', String(this.totalCost));
+    try {
+      localStorage.setItem('nx_chats', JSON.stringify(this.chats));
+      localStorage.setItem('nx_settings', JSON.stringify(this.settings));
+      localStorage.setItem('nx_fav_models', JSON.stringify(this.favModels));
+      localStorage.setItem('nx_total_cost', String(this.totalCost));
+    } catch (err) {
+      console.error('Speichern fehlgeschlagen:', err);
+      toast('Speichern fehlgeschlagen. Speicher eventuell voll.', 'error');
+    }
   },
   saveDebounced(ms = 400) {
     clearTimeout(this._saveTimer);
@@ -842,7 +884,7 @@ const store = {
   },
   getChat() { return this.chats.find(c => c.id === this.activeChatId) || null; },
   newChat(model) {
-    const c = { id: uuid(), title: 'Neuer Chat', model: model || 'openai/gpt-4o-mini', messages: [], createdAt: Date.now(), updatedAt: Date.now(), fav: false, archived: false, tokens: 0, cost: 0, draft: '' };
+    const c = { id: uuid(), title: 'Neuer Chat', model: model || pickDefaultModel(), messages: [], createdAt: Date.now(), updatedAt: Date.now(), fav: false, archived: false, tokens: 0, cost: 0, draft: '' };
     this.chats.unshift(c);
     this.activeChatId = c.id;
     this.save();
@@ -872,6 +914,13 @@ async function fetchModels() {
   return store.models;
 }
 
+function pickDefaultModel() {
+  return store.models.find(m => m.id === 'openai/gpt-4o-mini')?.id
+    || store.models.find(m => m.id?.endsWith(':free'))?.id
+    || store.models[0]?.id
+    || 'openrouter/auto';
+}
+
 async function validateKey() {
   try {
     const r = await fetch(`${API_BASE}/auth/key`, { headers: { 'Authorization': `Bearer ${store.apiKey}` } });
@@ -879,28 +928,30 @@ async function validateKey() {
   } catch { return false; }
 }
 
-// ── Reasoning support detection ──
+// ── Capability detection ──
 function modelSupportsReasoning(model) {
   if (!model) return false;
-  if (Array.isArray(model.supported_parameters)) {
-    const sp = model.supported_parameters;
-    if (sp.includes('reasoning') || sp.includes('include_reasoning') || sp.includes('reasoning_effort')) return true;
-  }
-  const id = (model.id || '').toLowerCase();
-  const name = (model.name || '').toLowerCase();
-  const combined = id + ' ' + name;
-  const patterns = [
-    /\bo1\b/, /\bo1-/, /\/o1/,
-    /\bo3\b/, /\bo3-/, /\/o3/,
-    /\bo4-mini/, /\/o4/,
-    /deepseek-r1/, /deepseek\/deepseek-r1/, /\br1-/,
-    /thinking/, /reasoning/, /\bqwq\b/,
-    /grok-3-mini/, /grok-4/,
-    /claude-3\.?7/, /claude-opus-4/, /claude-sonnet-4/, /claude-3-7/,
-    /gpt-5/, /gemini-2\.5/, /gemini-2\.0-flash-thinking/,
-    /magistral/, /phi-4-reasoning/,
+  const sp = Array.isArray(model.supported_parameters) ? model.supported_parameters : [];
+  return sp.includes('reasoning')
+    || sp.includes('include_reasoning')
+    || sp.includes('reasoning_effort');
+}
+
+function modelSupportsImages(model) {
+  if (!model) return false;
+
+  const parts = [
+    model.architecture?.modality,
+    model.architecture?.input_modalities,
+    model.input_modalities,
+    model.supported_parameters,
   ];
-  return patterns.some(p => p.test(combined));
+
+  return parts.some(part => {
+    if (Array.isArray(part)) return part.join(' ').toLowerCase().includes('image');
+    const value = String(part || '').toLowerCase();
+    return value.includes('image') || value.includes('vision') || value.includes('multimodal');
+  });
 }
 
 function getReasoningEfforts(model) {
@@ -950,8 +1001,8 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${store.apiKey}`,
-        'HTTP-Referer': location.href,
-        'X-Title': 'Nexus',
+        'HTTP-Referer': location.origin,
+        'X-OpenRouter-Title': 'Nexus',
       },
       body: JSON.stringify(body),
       signal: ctrl.signal,
@@ -1001,7 +1052,9 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
           if (rt) onToken(rt, 'reasoning');
           if (c) onToken(c, 'content');
           if (p.usage) usage = p.usage;
-        } catch {}
+        } catch (err) {
+          if (store.settings.showDebug) console.warn('SSE JSON konnte nicht gelesen werden:', data, err);
+        }
       }
     }
     finishDone({ usage, debug: { request: reqDebug, response: fullResp } });
@@ -1021,12 +1074,23 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
 // ────────────────────────────────
 // §5  MARKDOWN RENDERING
 // ────────────────────────────────
-marked.use({ breaks: true, gfm: true });
+if (window.marked) marked.use({ breaks: true, gfm: true });
 
 function renderMd(text) {
-  let html = marked.parse(text || '');
+  const source = text || '';
+  const raw = window.marked?.parse
+    ? marked.parse(source)
+    : `<p>${esc(source).replace(/\n/g, '<br>')}</p>`;
+
+  let html = window.DOMPurify
+    ? DOMPurify.sanitize(raw, {
+        USE_PROFILES: { html: true },
+        ADD_ATTR: ['target', 'rel']
+      })
+    : `<p>${esc(source).replace(/\n/g, '<br>')}</p>`;
+
   html = html.replace(/<pre><code class="language-([\w+-]+)">/g, (match, lang) =>
-    `<pre><div class="code-header"><span>${esc(lang)}</span><button onclick="nxCopyCode(this)">${IC.copy} Kopieren</button></div><code class="language-${lang}">`
+    `<pre><div class="code-header"><span>${esc(lang)}</span><button onclick="nxCopyCode(this)">${IC.copy} Kopieren</button></div><code class="language-${esc(lang)}">`
   );
   html = html.replace(/<pre><code>(?!<\/code>)/g,
     `<pre><div class="code-header"><span>code</span><button onclick="nxCopyCode(this)">${IC.copy} Kopieren</button></div><code>`
@@ -1035,7 +1099,7 @@ function renderMd(text) {
 }
 
 function highlightCode(container) {
-  if (!container || !hljs) return;
+  if (!container || typeof hljs === 'undefined') return;
   container.querySelectorAll('pre code').forEach(block => {
     if (!block.dataset.highlighted) hljs.highlightElement(block);
   });
@@ -1044,9 +1108,9 @@ function highlightCode(container) {
 window.nxCopyCode = function(btn) {
   const code = btn.closest('pre')?.querySelector('code');
   if (!code) return;
-  navigator.clipboard.writeText(code.textContent).then(() => {
+  copyText(code.textContent).then(ok => {
     const orig = btn.innerHTML;
-    btn.innerHTML = `${IC.check} Kopiert!`;
+    btn.innerHTML = ok ? `${IC.check} Kopiert!` : 'Fehler';
     setTimeout(() => { btn.innerHTML = orig; }, 1500);
   });
 };
@@ -1165,15 +1229,23 @@ function getReasoningLabel() {
 // ────────────────────────────────
 // §7  KEY SCREEN
 // ────────────────────────────────
-function renderKeyScreen() {
+async function renderKeyScreen() {
   const screen = document.getElementById('key-screen');
   const savedKey = sessionStorage.getItem('nx_key') || localStorage.getItem('nx_key') || '';
   if (savedKey) {
     store.apiKey = savedKey;
-    screen.classList.add('hidden');
-    document.getElementById('app-main').classList.add('visible');
-    initApp();
-    return;
+    const ok = await validateKey();
+    if (ok) {
+      screen.classList.add('hidden');
+      document.getElementById('app-main').classList.add('visible');
+      initApp();
+      return;
+    }
+
+    sessionStorage.removeItem('nx_key');
+    localStorage.removeItem('nx_key');
+    store.apiKey = '';
+    toast('Gespeicherter API Key ist ungültig. Bitte neu verbinden.', 'error');
   }
 
   screen.innerHTML = `<div class="key-bg-grad"></div>`;
@@ -1252,7 +1324,11 @@ async function initApp() {
   renderAppShell();
   try {
     await fetchModels();
-    if (!store.chats.length) store.newChat();
+    const fallbackModel = pickDefaultModel();
+    for (const chat of store.chats) {
+      if (!store.modelMap[chat.model]) chat.model = fallbackModel;
+    }
+    if (!store.chats.length) store.newChat(fallbackModel);
     else store.activeChatId = store.chats[0]?.id;
     render();
     focusInput();
@@ -1677,7 +1753,7 @@ function createMessageEl(msg, chat) {
   div.querySelectorAll('[data-act]').forEach(btn => {
     btn.addEventListener('click', () => {
       const act = btn.dataset.act;
-      if (act === 'copy') navigator.clipboard.writeText(msg.content).then(() => toast('Kopiert!', 'success'));
+      if (act === 'copy') copyText(msg.content).then(ok => toast(ok ? 'Kopiert!' : 'Kopieren fehlgeschlagen.', ok ? 'success' : 'error'));
       if (act === 'edit') { editingMsgId = msg.id; renderMessages(); }
       if (act === 'regen') regenerateMessage(msg, chat);
       if (act === 'retry') retryMessage(msg, chat);
@@ -1804,6 +1880,7 @@ function renderInputArea() {
   const chat = store.getChat();
   const currentModel = chat ? store.modelMap[chat.model] : null;
   const supportsReasoning = modelSupportsReasoning(currentModel);
+  const supportsImages = modelSupportsImages(currentModel);
 
   const rLabel = supportsReasoning ? getReasoningLabel() : null;
   const rActive = (supportsReasoning && store.settings.reasoningEnabled) ? ' active' : '';
@@ -1814,12 +1891,16 @@ function renderInputArea() {
   const reasoningBtnHtml = supportsReasoning
     ? `<button class="reasoning-btn${rActive}" id="btn-reasoning" title="${rTitle}">${IC.think}${rBadge}</button>`
     : '';
+  const attachDisabled = supportsImages ? '' : ' disabled';
+  const attachTitle = supportsImages
+    ? 'Bild anhängen (oder per Strg+V einfügen)'
+    : 'Das aktuelle Modell unterstützt wahrscheinlich keine Bilder';
 
   area.innerHTML = `
     <div class="chat-input-wrap">
       <div class="attached-preview" id="attached-preview" style="display:none"></div>
       <div class="chat-input-box" id="input-box">
-        <button class="attach-btn" id="btn-attach" title="Bild anhängen (oder per Strg+V einfügen)">${IC.paperclip}</button>
+        <button class="attach-btn" id="btn-attach" title="${attachTitle}"${attachDisabled}>${IC.paperclip}</button>
         ${reasoningBtnHtml}
         <textarea id="msg-input" rows="1" placeholder="Nachricht eingeben… (Strg+V für Bild)"></textarea>
         <button class="send-btn" id="btn-send" disabled>${IC.send}</button>
@@ -1882,6 +1963,7 @@ function renderInputArea() {
 
   // Paste images directly into input
   ta.addEventListener('paste', (e) => {
+    if (!supportsImages) return;
     const items = e.clipboardData?.items;
     if (!items) return;
     let handled = false;
@@ -1910,7 +1992,7 @@ function renderInputArea() {
     else if (ta.value.trim() || attachedImages.length) handleSend();
   });
 
-  attachBtn.addEventListener('click', () => fileInput.click());
+  attachBtn.addEventListener('click', () => { if (supportsImages) fileInput.click(); });
   fileInput.addEventListener('change', handleFileAttach);
 
   if (reasoningBtn) reasoningBtn.addEventListener('click', cycleReasoning);
@@ -1958,6 +2040,14 @@ function focusInput() {
 }
 
 function handleFileAttach(e) {
+  const chat = store.getChat();
+  const currentModel = chat ? store.modelMap[chat.model] : null;
+  if (!modelSupportsImages(currentModel)) {
+    toast('Das aktuelle Modell unterstützt wahrscheinlich keine Bilder.', 'error');
+    e.target.value = '';
+    return;
+  }
+
   const files = Array.from(e.target.files || []);
   files.forEach(file => {
     if (!file.type.startsWith('image/')) { toast('Nur Bilder werden unterstützt.', 'error'); return; }
@@ -2008,11 +2098,16 @@ async function handleSend() {
   if (!ta) return;
   const content = ta.value.trim();
   if (!content && !attachedImages.length) return;
+  const chat = store.getChat();
+  const currentModel = chat ? store.modelMap[chat.model] : null;
+  if (attachedImages.length && !modelSupportsImages(currentModel)) {
+    toast('Das aktuelle Modell unterstützt wahrscheinlich keine Bilder.', 'error');
+    return;
+  }
   ta.value = '';
   ta.style.height = 'auto';
   // Clear draft for this chat
-  const c = store.getChat();
-  if (c) { c.draft = ''; store.save(); }
+  if (chat) { chat.draft = ''; store.save(); }
   updateInputTokenCount();
   sendChatMessage(content, false);
 }
@@ -2020,6 +2115,12 @@ async function handleSend() {
 async function sendChatMessage(content, isResend) {
   let chat = store.getChat();
   if (!chat) { chat = store.newChat(); render(); }
+
+  const currentModel = store.modelMap[chat.model];
+  if (attachedImages.length && !modelSupportsImages(currentModel)) {
+    toast('Das aktuelle Modell unterstützt wahrscheinlich keine Bilder.', 'error');
+    return;
+  }
 
   if (chat.messages.length === 0 && chat.title === 'Neuer Chat' && content) {
     chat.title = content.slice(0, 50) + (content.length > 50 ? '…' : '');
@@ -2067,7 +2168,6 @@ async function sendChatMessage(content, isResend) {
   let reasoningText = '';
   const startTime = Date.now();
 
-  const currentModel = store.modelMap[chat.model];
   const effectiveParams = { ...store.settings };
   if (!modelSupportsReasoning(currentModel)) {
     effectiveParams.reasoningEnabled = false;
@@ -2372,7 +2472,7 @@ function modelCardHtml(m, currentModel) {
   if (isFree) badges.push('<span class="badge badge-green">Kostenlos</span>');
   if (supportsR) badges.push('<span class="badge badge-reasoning">🧠 Reasoning</span>');
   if (ctx >= 100000) badges.push(`<span class="badge badge-blue">${formatTokens(ctx)} ctx</span>`);
-  if (m.architecture?.modality?.includes('image') || m.architecture?.modality === 'multimodal') badges.push('<span class="badge badge-amber">Multimodal</span>');
+  if (modelSupportsImages(m)) badges.push('<span class="badge badge-amber">Multimodal</span>');
 
   return `<div class="model-card${isSelected ? ' selected' : ''}" data-id="${m.id}">
     <div class="mc-top">
@@ -2608,10 +2708,10 @@ function renderSettingsPanel() {
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result);
-        if (data.settings) store.settings = { ...DEFAULT_SETTINGS, ...data.settings };
-        if (data.chats) store.chats = data.chats;
-        if (data.favModels) store.favModels = data.favModels;
-        if (data.totalCost != null) store.totalCost = data.totalCost;
+        if (data.settings && typeof data.settings === 'object') store.settings = { ...DEFAULT_SETTINGS, ...data.settings };
+        if (Array.isArray(data.chats)) store.chats = data.chats;
+        if (Array.isArray(data.favModels)) store.favModels = data.favModels;
+        if (Number.isFinite(Number(data.totalCost))) store.totalCost = Number(data.totalCost);
         store.activeChatId = store.chats[0]?.id || null;
         document.documentElement.setAttribute('data-theme', store.settings.theme);
         store.save();
