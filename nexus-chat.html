@@ -358,6 +358,8 @@ ul,ol{list-style:none}
 .r-step-md > *:last-child{margin-bottom:0}
 .r-step-md p{margin-bottom:.35em}
 .r-step-md p:last-child{margin-bottom:0}
+.streaming-msg .r-step{animation:none}
+#stream-content{white-space:pre-wrap}
 
 /* ═══ §10 REASONING BUTTON in input ═══ */
 .reasoning-btn{
@@ -617,7 +619,8 @@ ul,ol{list-style:none}
 
   .chat-input-area{padding:10px 10px 12px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
   .chat-input-box{padding:8px 10px}
-  .chat-input-box textarea{font-size:.88rem}
+  input,textarea,select{font-size:16px}
+  .chat-input-box textarea{font-size:16px}
 
   .models-panel,.settings-panel{width:100%}
   .models-search{padding:10px 12px}
@@ -1151,6 +1154,11 @@ let reasoningStartTime = null;
 let reasoningTimerInterval = null;
 let streamContentStart = null;
 let streamStatsInterval = null;
+let streamReasoningRaf = null;
+let streamReasoningPendingText = '';
+let streamContentRaf = null;
+let streamContentPendingText = '';
+let autoScrollRaf = null;
 
 function startReasoningTimer() {
   if (reasoningTimerInterval) return;
@@ -1623,6 +1631,14 @@ function buildStepsHtml(steps, isStreaming) {
   }).join('');
 }
 
+function buildLiveStepsHtml(steps) {
+  return steps.map((step, i) => {
+    const isLast = i === steps.length - 1;
+    const stateClass = isLast ? 'active' : 'completed';
+    return `<div class="r-step ${stateClass}"><div class="r-step-md msg-content" style="white-space:pre-wrap">${esc(step)}</div></div>`;
+  }).join('');
+}
+
 function buildReasoningBlockHtml(reasoning, isStreaming) {
   const charCount = reasoning ? reasoning.length : 0;
   const label = isStreaming ? 'Denkt nach' : 'Denkprozess';
@@ -1631,7 +1647,7 @@ function buildReasoningBlockHtml(reasoning, isStreaming) {
   const contentId = isStreaming ? ' id="stream-reasoning-content"' : '';
 
   const steps = parseReasoningSteps(reasoning);
-  const stepsHtml = buildStepsHtml(steps, isStreaming);
+  const stepsHtml = isStreaming ? buildLiveStepsHtml(steps) : buildStepsHtml(steps, isStreaming);
 
   let meta = '';
   if (isStreaming) {
@@ -1770,7 +1786,7 @@ function showTypingIndicator() {
   if (!container) return null;
   let ind = container.querySelector('#typing-ind');
   if (!ind) {
-    ind = el('div', { className: 'msg msg-assistant', id: 'typing-ind' });
+    ind = el('div', { className: 'msg msg-assistant streaming-msg', id: 'typing-ind' });
     ind.innerHTML = `
       <div class="msg-role">Assistent</div>
       <div id="stream-reasoning-wrap" style="display:none"></div>
@@ -1788,17 +1804,25 @@ function showTypingIndicator() {
 function updateStreamReasoning(text) {
   const wrap = document.getElementById('stream-reasoning-wrap');
   if (!wrap) return;
+
+  streamReasoningPendingText = text;
+
   if (text.length > 0 && wrap.style.display === 'none') {
     wrap.style.display = 'block';
     wrap.innerHTML = buildReasoningBlockHtml(text, true);
     startReasoningTimer();
-  } else {
-    const inner = document.getElementById('stream-reasoning-content');
-    if (inner) {
-      const steps = parseReasoningSteps(text);
-      inner.innerHTML = `<div class="r-timeline">${buildStepsHtml(steps, true)}</div>`;
-    }
   }
+
+  if (!streamReasoningRaf) {
+    streamReasoningRaf = requestAnimationFrame(() => {
+      streamReasoningRaf = null;
+      const inner = document.getElementById('stream-reasoning-content');
+      if (!inner) return;
+      const steps = parseReasoningSteps(streamReasoningPendingText);
+      inner.innerHTML = `<div class="r-timeline">${buildLiveStepsHtml(steps)}</div>`;
+    });
+  }
+
   maybeAutoScroll();
 }
 
@@ -1822,6 +1846,12 @@ function finalizeStreamReasoning() {
     timer.textContent = elapsed;
   }
 
+  const inner = document.getElementById('stream-reasoning-content');
+  if (inner) {
+    const steps = parseReasoningSteps(streamReasoningPendingText);
+    inner.innerHTML = `<div class="r-timeline">${buildStepsHtml(steps, false)}</div>`;
+  }
+
   block.querySelectorAll('.r-step').forEach(s => {
     s.classList.remove('active');
     s.classList.add('completed');
@@ -1829,12 +1859,20 @@ function finalizeStreamReasoning() {
 }
 
 function updateStreamContent(text) {
-  const sc = document.getElementById('stream-content');
   const dots = document.getElementById('typing-dots');
-  if (sc) sc.innerHTML = renderMd(text);
+  streamContentPendingText = text;
+
   if (dots && text.length > 0) dots.style.display = 'none';
-  finalizeStreamReasoning();
   if (!streamContentStart) startStreamStats();
+
+  if (!streamContentRaf) {
+    streamContentRaf = requestAnimationFrame(() => {
+      streamContentRaf = null;
+      const sc = document.getElementById('stream-content');
+      if (sc) sc.textContent = streamContentPendingText;
+    });
+  }
+
   maybeAutoScroll();
 }
 
@@ -1844,7 +1882,13 @@ function maybeAutoScroll() {
   if (!store.settings.autoScroll) return;
   // Only auto-scroll if user is already close to bottom
   if (isNearBottom(chatC, 200)) {
-    chatC.scrollTop = chatC.scrollHeight;
+    if (!autoScrollRaf) {
+      autoScrollRaf = requestAnimationFrame(() => {
+        autoScrollRaf = null;
+        const c = document.getElementById('chat-container');
+        if (c) c.scrollTop = c.scrollHeight;
+      });
+    }
   } else {
     // Show the "new message" dot on scroll-to-bottom button
     const btn = document.getElementById('scroll-bottom-btn');
@@ -1856,11 +1900,24 @@ function maybeAutoScroll() {
   }
 }
 
+function clearStreamingFrames() {
+  if (streamReasoningRaf) cancelAnimationFrame(streamReasoningRaf);
+  if (streamContentRaf) cancelAnimationFrame(streamContentRaf);
+  if (autoScrollRaf) cancelAnimationFrame(autoScrollRaf);
+  streamReasoningRaf = null;
+  streamContentRaf = null;
+  autoScrollRaf = null;
+}
+
 function removeTypingIndicator() {
+  finalizeStreamReasoning();
+  clearStreamingFrames();
   const ind = document.getElementById('typing-ind');
   if (ind) ind.remove();
   stopStreamStats();
   streamContentStart = null;
+  streamContentPendingText = '';
+  streamReasoningPendingText = '';
 }
 
 // ────────────────────────────────
@@ -2248,6 +2305,7 @@ function stopStreaming() {
   if (store.abortCtrl) { store.abortCtrl.abort(); store.abortCtrl = null; }
   stopReasoningTimer();
   stopStreamStats();
+  clearStreamingFrames();
 }
 
 function regenerateMessage(msg, chat) {
