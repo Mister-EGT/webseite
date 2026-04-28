@@ -359,7 +359,9 @@ ul,ol{list-style:none}
 .r-step-md p{margin-bottom:.35em}
 .r-step-md p:last-child{margin-bottom:0}
 .streaming-msg .r-step{animation:none}
-#stream-content{white-space:pre-wrap}
+#stream-content{white-space:normal}
+#stream-content > *:first-child{margin-top:0}
+#stream-content > *:last-child{margin-bottom:0}
 
 /* ═══ §10 REASONING BUTTON in input ═══ */
 .reasoning-btn{
@@ -1101,6 +1103,33 @@ function renderMd(text) {
   return html;
 }
 
+function closeOpenCodeFence(text) {
+  const source = text || '';
+  const lines = source.split('\n');
+  let openFence = null;
+
+  for (const line of lines) {
+    const m = line.match(/^\s*(`{3,}|~{3,})/);
+    if (!m) continue;
+
+    const marker = m[1];
+    const char = marker[0];
+    const len = marker.length;
+
+    if (!openFence) {
+      openFence = { char, len };
+    } else if (char === openFence.char && len >= openFence.len) {
+      openFence = null;
+    }
+  }
+
+  return openFence ? `${source}\n${openFence.char.repeat(openFence.len)}` : source;
+}
+
+function renderStreamingMd(text) {
+  return renderMd(closeOpenCodeFence(text));
+}
+
 function highlightCode(container) {
   if (!container || typeof hljs === 'undefined') return;
   container.querySelectorAll('pre code').forEach(block => {
@@ -1195,8 +1224,7 @@ function stopStreamStats() {
 function updateStreamStats() {
   const elS = document.getElementById('typing-stats');
   if (!elS || !streamContentStart) return;
-  const sc = document.getElementById('stream-content');
-  const text = sc?.textContent || '';
+  const text = streamContentPendingText || '';
   const tokens = estimateTokens(text);
   const elapsed = (Date.now() - streamContentStart) / 1000;
   const tps = elapsed > 0.1 ? (tokens / elapsed).toFixed(1) : '0';
@@ -1615,8 +1643,39 @@ function renderMessages() {
 
 function parseReasoningSteps(text) {
   if (!text) return [];
-  const parts = text.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  return parts.length ? parts : [text];
+
+  const steps = [];
+  const current = [];
+  let openFence = null;
+  const lines = String(text).split('\n');
+
+  for (const line of lines) {
+    const fence = line.match(/^\s*(`{3,}|~{3,})/);
+    if (fence) {
+      const marker = fence[1];
+      const char = marker[0];
+      const len = marker.length;
+
+      if (!openFence) {
+        openFence = { char, len };
+      } else if (char === openFence.char && len >= openFence.len) {
+        openFence = null;
+      }
+    }
+
+    if (!openFence && !line.trim()) {
+      const part = current.join('\n').trim();
+      if (part) steps.push(part);
+      current.length = 0;
+      continue;
+    }
+
+    current.push(line);
+  }
+
+  const tail = current.join('\n').trim();
+  if (tail) steps.push(tail);
+  return steps.length ? steps : [text];
 }
 
 function buildStepsHtml(steps, isStreaming) {
@@ -1631,7 +1690,7 @@ function buildLiveStepsHtml(steps) {
   return steps.map((step, i) => {
     const isLast = i === steps.length - 1;
     const stateClass = isLast ? 'active' : 'completed';
-    return `<div class="r-step ${stateClass}"><div class="r-step-md msg-content" style="white-space:pre-wrap">${esc(step)}</div></div>`;
+    return `<div class="r-step ${stateClass}"><div class="r-step-md msg-content">${renderStreamingMd(step)}</div></div>`;
   }).join('');
 }
 
@@ -1816,6 +1875,7 @@ function updateStreamReasoning(text) {
       if (!inner) return;
       const steps = parseReasoningSteps(streamReasoningPendingText);
       inner.innerHTML = `<div class="r-timeline">${buildLiveStepsHtml(steps)}</div>`;
+      highlightCode(inner);
     });
   }
 
@@ -1846,6 +1906,7 @@ function finalizeStreamReasoning() {
   if (inner) {
     const steps = parseReasoningSteps(streamReasoningPendingText);
     inner.innerHTML = `<div class="r-timeline">${buildStepsHtml(steps, false)}</div>`;
+    highlightCode(inner);
   }
 
   block.querySelectorAll('.r-step').forEach(s => {
@@ -1865,7 +1926,10 @@ function updateStreamContent(text) {
     streamContentRaf = requestAnimationFrame(() => {
       streamContentRaf = null;
       const sc = document.getElementById('stream-content');
-      if (sc) sc.textContent = streamContentPendingText;
+      if (sc) {
+        sc.innerHTML = renderStreamingMd(streamContentPendingText);
+        highlightCode(sc);
+      }
     });
   }
 
