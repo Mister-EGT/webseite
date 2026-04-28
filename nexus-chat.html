@@ -151,8 +151,8 @@ ul,ol{list-style:none}
 /* ── Sidebar ── */
 .sidebar{width:var(--sidebar-w);height:100%;display:flex;flex-direction:column;
   background:var(--bg-1);border-right:1px solid var(--border-1);flex-shrink:0;
-  transition:transform .3s ease;z-index:700}
-.sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)))}
+  transition:transform .3s ease,margin-left .3s ease;z-index:700;margin-left:0}
+.sidebar.collapsed{transform:translateX(calc(-1 * var(--sidebar-w)));margin-left:calc(-1 * var(--sidebar-w))}
 .sidebar-backdrop{display:none}
 .sidebar-head{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
   border-bottom:1px solid var(--border-1);flex-shrink:0}
@@ -598,9 +598,9 @@ ul,ol{list-style:none}
 
   .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);
     transition:transform .3s cubic-bezier(.4,0,.2,1);
-    box-shadow:var(--shadow-l);max-width:320px;width:var(--sidebar-w)}
-  .sidebar:not(.collapsed){transform:translateX(0)}
-  .sidebar.collapsed{transform:translateX(-100%)}
+    box-shadow:var(--shadow-l);max-width:320px;width:var(--sidebar-w);margin-left:0}
+  .sidebar:not(.collapsed){transform:translateX(0);margin-left:0}
+  .sidebar.collapsed{transform:translateX(-100%);margin-left:0}
 
   .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);
     z-index:699;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;
@@ -1403,14 +1403,10 @@ function toggleSidebar(open) {
   const bd = document.getElementById('sidebar-backdrop');
   if (!sb || !bd) return;
 
-  if (open) {
-    sb.classList.remove('collapsed');
-    if (isMobile()) bd.classList.add('visible');
-  } else {
-    sb.classList.add('collapsed');
-    bd.classList.remove('visible');
-  }
-  store.settings.sidebarOpen = open;
+  sb.classList.toggle('collapsed', !open);
+  bd.classList.toggle('visible', Boolean(open && isMobile()));
+
+  store.settings.sidebarOpen = Boolean(open);
   store.save();
 }
 
@@ -2371,7 +2367,7 @@ const MODEL_CATEGORIES = [
   { key: 'all', label: 'Alle' },
   { key: 'fav', label: '★ Favoriten' },
   { key: 'free', label: 'Kostenlos' },
-  { key: 'reasoning', label: 'Reasoning' },
+  { key: 'reasoning', label: '🧠 Reasoning' },
   { key: 'multimodal', label: 'Multimodal' },
   { key: 'large', label: '100K+ Kontext' },
   { key: 'openai', label: 'OpenAI' },
@@ -2929,16 +2925,19 @@ document.addEventListener('keydown', (e) => {
 let lastWidth = window.innerWidth;
 window.addEventListener('resize', () => {
   const w = window.innerWidth;
+  const sb = document.getElementById('sidebar');
   const bd = document.getElementById('sidebar-backdrop');
-  if (lastWidth <= 768 && w > 768 && bd) {
-    bd.classList.remove('visible');
+
+  if (lastWidth <= 768 && w > 768) {
+    if (bd) bd.classList.remove('visible');
+    if (sb) sb.classList.toggle('collapsed', !store.settings.sidebarOpen);
   }
+
   if (lastWidth > 768 && w <= 768) {
-    const sb = document.getElementById('sidebar');
-    if (sb && !sb.classList.contains('collapsed')) {
-      sb.classList.add('collapsed');
-    }
+    if (sb) sb.classList.add('collapsed');
+    if (bd) bd.classList.remove('visible');
   }
+
   lastWidth = w;
 });
 
