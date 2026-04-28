@@ -964,6 +964,64 @@ function getReasoningEfforts(model) {
   return ['low', 'medium', 'high'];
 }
 
+function extractReasoningText(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+
+  if (Array.isArray(value)) {
+    return value.map(extractReasoningText).filter(Boolean).join('');
+  }
+
+  if (typeof value === 'object') {
+    if (typeof value.text === 'string') return value.text;
+    if (typeof value.summary === 'string') return value.summary;
+    if (typeof value.content === 'string') return value.content;
+    return '';
+  }
+
+  return '';
+}
+
+function splitInlineThinking(text) {
+  const source = String(text || '');
+  let content = '';
+  let reasoning = '';
+  let pos = 0;
+  let inThinking = false;
+
+  const findTag = (from, closing) => {
+    const re = closing
+      ? /<\s*\/\s*(think|thinking)\s*>/ig
+      : /<\s*(think|thinking)\s*>/ig;
+    re.lastIndex = from;
+    return re.exec(source);
+  };
+
+  while (pos < source.length) {
+    if (!inThinking) {
+      const open = findTag(pos, false);
+      if (!open) {
+        content += source.slice(pos);
+        break;
+      }
+      content += source.slice(pos, open.index);
+      pos = open.index + open[0].length;
+      inThinking = true;
+    } else {
+      const close = findTag(pos, true);
+      if (!close) {
+        reasoning += source.slice(pos);
+        break;
+      }
+      reasoning += source.slice(pos, close.index);
+      pos = close.index + close[0].length;
+      inThinking = false;
+    }
+  }
+
+  return { content, reasoning, inThinking };
+}
+
 /**
  * @param {function} onToken - (text, type:'content'|'reasoning')
  */
@@ -1020,8 +1078,11 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
 
     if (!body.stream) {
       const j = await r.json();
-      const content = j.choices?.[0]?.message?.content || '';
-      const reasoning = j.choices?.[0]?.message?.reasoning || j.choices?.[0]?.message?.reasoning_content || '';
+      const msg = j.choices?.[0]?.message || {};
+      const content = msg.content || '';
+      const reasoning = extractReasoningText(msg.reasoning)
+        || extractReasoningText(msg.reasoning_content)
+        || extractReasoningText(msg.reasoning_details);
       if (reasoning) onToken(reasoning, 'reasoning');
       onToken(content, 'content');
       finishDone({ usage: j.usage || {}, debug: { request: reqDebug, response: j } });
@@ -1052,8 +1113,11 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
         try {
           const p = JSON.parse(data);
           fullResp.push(p);
-          const c = p.choices?.[0]?.delta?.content;
-          const rt = p.choices?.[0]?.delta?.reasoning || p.choices?.[0]?.delta?.reasoning_content;
+          const delta = p.choices?.[0]?.delta || {};
+          const c = delta.content;
+          const rt = extractReasoningText(delta.reasoning)
+            || extractReasoningText(delta.reasoning_content)
+            || extractReasoningText(delta.reasoning_details);
           if (rt) onToken(rt, 'reasoning');
           if (c) onToken(c, 'content');
           if (p.usage) usage = p.usage;
@@ -2282,7 +2346,9 @@ async function sendChatMessage(content, isResend) {
   showTypingIndicator();
 
   let fullText = '';
-  let reasoningText = '';
+  let rawContentText = '';
+  let apiReasoningText = '';
+  let inlineReasoningText = '';
   const startTime = Date.now();
 
   const effectiveParams = { ...store.settings };
@@ -2292,10 +2358,16 @@ async function sendChatMessage(content, isResend) {
 
   const onToken = (token, type) => {
     if (type === 'reasoning') {
-      reasoningText += token;
-      updateStreamReasoning(reasoningText);
+      apiReasoningText += token;
+      updateStreamReasoning(apiReasoningText + inlineReasoningText);
     } else {
-      fullText += token;
+      rawContentText += token;
+      const split = splitInlineThinking(rawContentText);
+      fullText = split.content;
+      inlineReasoningText = split.reasoning;
+
+      const combinedReasoning = apiReasoningText + inlineReasoningText;
+      if (combinedReasoning.trim()) updateStreamReasoning(combinedReasoning);
       updateStreamContent(fullText);
     }
   };
@@ -2317,14 +2389,16 @@ async function sendChatMessage(content, isResend) {
     }
 
     // If nothing was returned (aborted early) skip pushing an empty msg
-    if (!fullText.trim() && !reasoningText.trim()) {
+    const finalReasoningText = apiReasoningText + inlineReasoningText;
+
+    if (!fullText.trim() && !finalReasoningText.trim()) {
       renderMessages();
       return;
     }
 
     const assistantMsg = {
       id: uuid(), role: 'assistant', content: fullText, ts: Date.now(),
-      reasoning: reasoningText || undefined,
+      reasoning: finalReasoningText || undefined,
       tokens: { prompt: promptTokens, completion: compTokens },
       cost, model: chat.model, duration,
       debug: store.settings.showDebug ? info.debug : undefined,
