@@ -715,7 +715,7 @@ function icon(name) { return `<span class="nx-icon">${IC[name]}</span>`; }
 // ────────────────────────────────
 const $ = (s, p) => (p || document).querySelector(s);
 const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
-const uuid = () => crypto.randomUUID
+const uuid = () => (window.crypto && typeof crypto.randomUUID === 'function')
   ? crypto.randomUUID()
   : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
       const r = Math.random() * 16 | 0;
@@ -723,6 +723,7 @@ const uuid = () => crypto.randomUUID
       return v.toString(16);
     });
 const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+const escAttr = (s) => esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
@@ -799,14 +800,34 @@ function downloadBlob(blob, filename) {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 200);
 }
 
+function storageArea(area) {
+  try {
+    return typeof area === 'string' ? window[area] : area;
+  } catch {
+    return null;
+  }
+}
+
+function storageGet(area, key) {
+  try { return storageArea(area)?.getItem(key) || ''; } catch { return ''; }
+}
+
+function storageSet(area, key, value) {
+  try { storageArea(area)?.setItem(key, value); return true; } catch { return false; }
+}
+
+function storageRemove(area, key) {
+  try { storageArea(area)?.removeItem(key); } catch {}
+}
+
 function safeJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storageGet('localStorage', key);
     if (!raw) return fallback;
     return JSON.parse(raw);
   } catch (err) {
     console.warn(`Ungültige lokale Daten in ${key}:`, err);
-    localStorage.removeItem(key);
+    storageRemove('localStorage', key);
     return fallback;
   }
 }
@@ -868,7 +889,7 @@ const store = {
   settings: { ...DEFAULT_SETTINGS, ...safeJson('nx_settings', {}) },
   isStreaming: false,
   abortCtrl: null,
-  totalCost: Number(localStorage.getItem('nx_total_cost')) || 0,
+  totalCost: Number(storageGet('localStorage', 'nx_total_cost')) || 0,
   _saveTimer: null,
   _draftTimer: null,
 
@@ -973,21 +994,63 @@ function extractReasoningText(value) {
   }
 
   if (typeof value === 'object') {
-    if (typeof value.text === 'string') return value.text;
-    if (typeof value.summary === 'string') return value.summary;
-    if (typeof value.content === 'string') return value.content;
+    const preferredKeys = ['text', 'summary', 'content', 'reasoning', 'reasoning_content'];
+    for (const key of preferredKeys) {
+      if (value[key] != null) {
+        const extracted = extractReasoningText(value[key]);
+        if (extracted) return extracted;
+      }
+    }
     return '';
   }
 
   return '';
 }
 
-function splitInlineThinking(text) {
+function extractContentText(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    return value.map(part => {
+      if (typeof part === 'string') return part;
+      if (part && typeof part === 'object') return part.text || part.content || '';
+      return '';
+    }).join('');
+  }
+  if (typeof value === 'object') return value.text || value.content || '';
+  return String(value);
+}
+
+function combineReasoningTexts(...parts) {
+  return parts
+    .map(p => String(p || '').trim())
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function isPartialTagPrefix(tail, tags) {
+  const normalized = tail.toLowerCase().replace(/\s+/g, '');
+  return tags.some(tag => tag.startsWith(normalized));
+}
+
+function findPartialTagStart(chunk, tags) {
+  const source = String(chunk || '');
+  const maxLen = Math.min(source.length, 28);
+  for (let i = source.length - maxLen; i < source.length; i++) {
+    if (source[i] !== '<') continue;
+    const tail = source.slice(i);
+    if (isPartialTagPrefix(tail, tags)) return i;
+  }
+  return -1;
+}
+
+function splitInlineThinking(text, streaming = false) {
   const source = String(text || '');
   let content = '';
   let reasoning = '';
   let pos = 0;
   let inThinking = false;
+  let held = '';
 
   const findTag = (from, closing) => {
     const re = closing
@@ -1001,7 +1064,16 @@ function splitInlineThinking(text) {
     if (!inThinking) {
       const open = findTag(pos, false);
       if (!open) {
-        content += source.slice(pos);
+        const rest = source.slice(pos);
+        if (streaming) {
+          const partialAt = findPartialTagStart(rest, ['<think>', '<thinking>']);
+          if (partialAt >= 0) {
+            content += rest.slice(0, partialAt);
+            held = rest.slice(partialAt);
+            break;
+          }
+        }
+        content += rest;
         break;
       }
       content += source.slice(pos, open.index);
@@ -1010,7 +1082,16 @@ function splitInlineThinking(text) {
     } else {
       const close = findTag(pos, true);
       if (!close) {
-        reasoning += source.slice(pos);
+        const rest = source.slice(pos);
+        if (streaming) {
+          const partialAt = findPartialTagStart(rest, ['</think>', '</thinking>']);
+          if (partialAt >= 0) {
+            reasoning += rest.slice(0, partialAt);
+            held = rest.slice(partialAt);
+            break;
+          }
+        }
+        reasoning += rest;
         break;
       }
       reasoning += source.slice(pos, close.index);
@@ -1019,7 +1100,7 @@ function splitInlineThinking(text) {
     }
   }
 
-  return { content, reasoning, inThinking };
+  return { content, reasoning, inThinking, held };
 }
 
 /**
@@ -1079,7 +1160,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
     if (!body.stream) {
       const j = await r.json();
       const msg = j.choices?.[0]?.message || {};
-      const content = msg.content || '';
+      const content = extractContentText(msg.content);
       const reasoning = extractReasoningText(msg.reasoning)
         || extractReasoningText(msg.reasoning_content)
         || extractReasoningText(msg.reasoning_details);
@@ -1089,6 +1170,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
       return;
     }
 
+    if (!r.body) throw new Error('Keine Streaming-Antwort vom Server erhalten.');
     const reader = r.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -1104,8 +1186,8 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
+        if (!trimmed || !trimmed.startsWith('data:')) continue;
+        const data = trimmed.slice(5).trimStart();
         if (data === '[DONE]') {
           finishDone({ usage, debug: { request: reqDebug, response: fullResp } });
           return;
@@ -1114,7 +1196,7 @@ async function streamChat(messages, model, params, onToken, onDone, onError) {
           const p = JSON.parse(data);
           fullResp.push(p);
           const delta = p.choices?.[0]?.delta || {};
-          const c = delta.content;
+          const c = extractContentText(delta.content);
           const rt = extractReasoningText(delta.reasoning)
             || extractReasoningText(delta.reasoning_content)
             || extractReasoningText(delta.reasoning_details);
@@ -1197,7 +1279,14 @@ function renderStreamingMd(text) {
 function highlightCode(container) {
   if (!container || typeof hljs === 'undefined') return;
   container.querySelectorAll('pre code').forEach(block => {
-    if (!block.dataset.highlighted) hljs.highlightElement(block);
+    if (block.dataset.highlighted) return;
+    try {
+      hljs.highlightElement(block);
+    } catch (err) {
+      block.removeAttribute('class');
+      block.dataset.highlighted = 'yes';
+      if (store.settings.showDebug) console.warn('Syntax-Highlighting fehlgeschlagen:', err);
+    }
   });
 }
 
@@ -1331,7 +1420,7 @@ function getReasoningLabel() {
 // ────────────────────────────────
 async function renderKeyScreen() {
   const screen = document.getElementById('key-screen');
-  const savedKey = sessionStorage.getItem('nx_key') || localStorage.getItem('nx_key') || '';
+  const savedKey = storageGet('sessionStorage', 'nx_key') || storageGet('localStorage', 'nx_key') || '';
   if (savedKey) {
     store.apiKey = savedKey;
     const ok = await validateKey();
@@ -1342,8 +1431,8 @@ async function renderKeyScreen() {
       return;
     }
 
-    sessionStorage.removeItem('nx_key');
-    localStorage.removeItem('nx_key');
+    storageRemove('sessionStorage', 'nx_key');
+    storageRemove('localStorage', 'nx_key');
     store.apiKey = '';
     toast('Gespeicherter API Key ist ungültig. Bitte neu verbinden.', 'error');
   }
@@ -1400,12 +1489,12 @@ async function renderKeyScreen() {
       return;
     }
 
-    if (persist.checked) {
-      localStorage.setItem('nx_key', key);
-      store.settings.keyStorage = 'local';
-    } else {
-      sessionStorage.setItem('nx_key', key);
-      store.settings.keyStorage = 'session';
+    const keySaved = persist.checked
+      ? storageSet('localStorage', 'nx_key', key)
+      : storageSet('sessionStorage', 'nx_key', key);
+    store.settings.keyStorage = persist.checked ? 'local' : 'session';
+    if (!keySaved) {
+      toast('API Key konnte nicht gespeichert werden. Die Verbindung bleibt nur im aktuellen Tab aktiv.', 'info');
     }
     store.save();
 
@@ -1414,7 +1503,7 @@ async function renderKeyScreen() {
     initApp();
   }
 
-  inp.focus();
+  if (!isMobile()) inp.focus();
 }
 
 // ────────────────────────────────
@@ -1527,7 +1616,7 @@ function renderSidebar() {
       <button class="btn-new-chat" id="btn-new-chat">${IC.plus} Neuer Chat</button>
     </div>
     <div class="sidebar-search">
-      <input type="text" placeholder="Chats durchsuchen…" id="chat-search" value="${esc(chatSearch)}" autocomplete="off" spellcheck="false">
+      <input type="text" placeholder="Chats durchsuchen…" id="chat-search" value="${escAttr(chatSearch)}" autocomplete="off" spellcheck="false">
     </div>
     <div class="chat-list" id="chat-list">
       ${favChats.filter(filterFn).length ? `<div class="chat-list-section"><div class="section-label">★ Favoriten</div>${favChats.filter(filterFn).map(chatItemHtml).join('')}</div>` : ''}
@@ -1597,7 +1686,7 @@ function renderSidebar() {
 function chatItemHtml(c) {
   const active = c.id === store.activeChatId ? ' active' : '';
   const draftDot = c.draft && c.draft.trim() ? `<span class="chat-draft-dot" title="Entwurf vorhanden"></span>` : '';
-  return `<div class="chat-item${active}" data-id="${c.id}">
+  return `<div class="chat-item${active}" data-id="${escAttr(c.id)}">
     <span class="chat-icon">${IC.chat}</span>
     <span class="chat-title">${esc(c.title)}</span>
     ${draftDot}
@@ -1840,7 +1929,7 @@ function createMessageEl(msg, chat) {
 
   let imagesHtml = '';
   if (msg.images && msg.images.length) {
-    imagesHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${msg.images.map(img => `<img src="${img.data}" alt="${esc(img.name)}" style="max-width:200px;max-height:150px;border-radius:var(--radius-s);object-fit:cover;border:1px solid var(--border-1)">`).join('')}</div>`;
+    imagesHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${msg.images.map(img => `<img src="${escAttr(img.data)}" alt="${escAttr(img.name)}" style="max-width:200px;max-height:150px;border-radius:var(--radius-s);object-fit:cover;border:1px solid var(--border-1)">`).join('')}</div>`;
   }
 
   let metaParts = [];
@@ -1924,6 +2013,9 @@ function updateStreamReasoning(text) {
   const wrap = document.getElementById('stream-reasoning-wrap');
   if (!wrap) return;
 
+  const dots = document.getElementById('typing-dots');
+  if (dots && text.length > 0) dots.style.display = 'none';
+
   streamReasoningPendingText = text;
 
   if (text.length > 0 && wrap.style.display === 'none') {
@@ -1984,7 +2076,7 @@ function updateStreamContent(text) {
   streamContentPendingText = text;
 
   if (dots && text.length > 0) dots.style.display = 'none';
-  if (!streamContentStart) startStreamStats();
+  if (!streamContentStart && text.length > 0) startStreamStats();
 
   if (!streamContentRaf) {
     streamContentRaf = requestAnimationFrame(() => {
@@ -2070,7 +2162,7 @@ function renderInputArea() {
     ? `Reasoning: ${store.settings.reasoningEffort.toUpperCase()} — Klick zum Wechseln (low · medium · high · aus)`
     : 'Reasoning aktivieren (Klick: low → medium → high → aus)';
   const reasoningBtnHtml = supportsReasoning
-    ? `<button class="reasoning-btn${rActive}" id="btn-reasoning" title="${rTitle}">${IC.think}${rBadge}</button>`
+    ? `<button class="reasoning-btn${rActive}" id="btn-reasoning" title="${escAttr(rTitle)}">${IC.think}${rBadge}</button>`
     : '';
   const attachDisabled = supportsImages ? '' : ' disabled';
   const attachTitle = supportsImages
@@ -2081,7 +2173,7 @@ function renderInputArea() {
     <div class="chat-input-wrap">
       <div class="attached-preview" id="attached-preview" style="display:none"></div>
       <div class="chat-input-box" id="input-box">
-        <button class="attach-btn" id="btn-attach" title="${attachTitle}"${attachDisabled}>${IC.paperclip}</button>
+        <button class="attach-btn" id="btn-attach" title="${escAttr(attachTitle)}"${attachDisabled}>${IC.paperclip}</button>
         ${reasoningBtnHtml}
         <textarea id="msg-input" rows="1" placeholder="Nachricht eingeben… (Strg+V für Bild)"></textarea>
         <button class="send-btn" id="btn-send" disabled>${IC.send}</button>
@@ -2217,6 +2309,7 @@ function updateSendBtn() {
 }
 
 function focusInput() {
+  if (isMobile()) return;
   setTimeout(() => { const ta = document.getElementById('msg-input'); if (ta) ta.focus(); }, 150);
 }
 
@@ -2256,7 +2349,7 @@ function updateAttachedPreview() {
   preview.style.display = 'flex';
   preview.innerHTML = attachedImages.map((img, i) => `
     <div class="attached-chip">
-      <img src="${img.data}" alt="${esc(img.name)}">
+      <img src="${escAttr(img.data)}" alt="${escAttr(img.name)}">
       <span>${esc(img.name.length > 15 ? img.name.slice(0, 12) + '…' : img.name)}</span>
       <button data-remove="${i}" title="Entfernen">${IC.x}</button>
     </div>
@@ -2359,14 +2452,14 @@ async function sendChatMessage(content, isResend) {
   const onToken = (token, type) => {
     if (type === 'reasoning') {
       apiReasoningText += token;
-      updateStreamReasoning(apiReasoningText + inlineReasoningText);
+      updateStreamReasoning(combineReasoningTexts(apiReasoningText, inlineReasoningText));
     } else {
       rawContentText += token;
-      const split = splitInlineThinking(rawContentText);
+      const split = splitInlineThinking(rawContentText, true);
       fullText = split.content;
       inlineReasoningText = split.reasoning;
 
-      const combinedReasoning = apiReasoningText + inlineReasoningText;
+      const combinedReasoning = combineReasoningTexts(apiReasoningText, inlineReasoningText);
       if (combinedReasoning.trim()) updateStreamReasoning(combinedReasoning);
       updateStreamContent(fullText);
     }
@@ -2388,8 +2481,12 @@ async function sendChatMessage(content, isResend) {
       cost = (promptTokens * pp) + (compTokens * cp);
     }
 
+    const finalSplit = splitInlineThinking(rawContentText, false);
+    fullText = finalSplit.content;
+    inlineReasoningText = finalSplit.reasoning;
+
     // If nothing was returned (aborted early) skip pushing an empty msg
-    const finalReasoningText = apiReasoningText + inlineReasoningText;
+    const finalReasoningText = combineReasoningTexts(apiReasoningText, inlineReasoningText);
 
     if (!fullText.trim() && !finalReasoningText.trim()) {
       renderMessages();
@@ -2531,7 +2628,7 @@ function filterModels() {
   if (modelCategory === 'fav') list = list.filter(m => store.favModels.includes(m.id));
   else if (modelCategory === 'free') list = list.filter(m => parseFloat(m.pricing?.prompt || '1') === 0 && parseFloat(m.pricing?.completion || '1') === 0);
   else if (modelCategory === 'reasoning') list = list.filter(m => modelSupportsReasoning(m));
-  else if (modelCategory === 'multimodal') list = list.filter(m => m.architecture?.modality?.includes('image') || m.id.includes('vision') || m.architecture?.modality === 'multimodal');
+  else if (modelCategory === 'multimodal') list = list.filter(m => modelSupportsImages(m));
   else if (modelCategory === 'large') list = list.filter(m => (m.context_length || 0) >= 100000);
   else if (['openai','anthropic','google','meta','mistral'].includes(modelCategory)) list = list.filter(m => m.id.toLowerCase().includes(modelCategory));
 
@@ -2565,7 +2662,7 @@ function renderModelsPanel() {
       <button class="btn-icon" id="close-models">${IC.x}</button>
     </div>
     <div class="models-search">
-      <input type="text" placeholder="Modell suchen…" id="model-search" value="${esc(modelFilter)}" autocomplete="off" autocapitalize="none" spellcheck="false">
+      <input type="text" placeholder="Modell suchen…" id="model-search" value="${escAttr(modelFilter)}" autocomplete="off" autocapitalize="none" spellcheck="false">
       <div class="filter-chips" id="filter-chips">
         ${MODEL_CATEGORIES.map(c => `<span class="filter-chip${modelCategory === c.key ? ' active' : ''}" data-cat="${c.key}">${c.label}</span>`).join('')}
       </div>
@@ -2586,9 +2683,11 @@ function renderModelsPanel() {
     modelFilter = e.target.value;
     updateModelsGrid();
   });
-  setTimeout(() => {
-    if (document.activeElement !== searchInput) searchInput.focus();
-  }, 100);
+  if (!isMobile()) {
+    setTimeout(() => {
+      if (document.activeElement !== searchInput) searchInput.focus();
+    }, 100);
+  }
 
   panel.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -2666,13 +2765,13 @@ function modelCardHtml(m, currentModel) {
   if (ctx >= 100000) badges.push(`<span class="badge badge-blue">${formatTokens(ctx)} ctx</span>`);
   if (modelSupportsImages(m)) badges.push('<span class="badge badge-amber">Multimodal</span>');
 
-  return `<div class="model-card${isSelected ? ' selected' : ''}" data-id="${m.id}">
+  return `<div class="model-card${isSelected ? ' selected' : ''}" data-id="${escAttr(m.id)}">
     <div class="mc-top">
       <div style="min-width:0">
         <div class="mc-name">${esc((m.name || m.id).split('/').pop())}</div>
         <div class="mc-provider">${esc(provider)}</div>
       </div>
-      <button class="fav-btn${isFav ? ' faved' : ''}" data-model="${m.id}" title="Favorit">${isFav ? IC.starFill : IC.star}</button>
+      <button class="fav-btn${isFav ? ' faved' : ''}" data-model="${escAttr(m.id)}" title="Favorit">${isFav ? IC.starFill : IC.star}</button>
     </div>
     ${badges.length ? `<div class="mc-badges">${badges.join('')}</div>` : ''}
     <div class="mc-stats">
@@ -2859,8 +2958,8 @@ function renderSettingsPanel() {
   // Actions
   panel.querySelector('#set-clear-key').onclick = () => {
     if (!confirm('API Key wirklich entfernen? Du wirst abgemeldet.')) return;
-    sessionStorage.removeItem('nx_key');
-    localStorage.removeItem('nx_key');
+    storageRemove('sessionStorage', 'nx_key');
+    storageRemove('localStorage', 'nx_key');
     store.apiKey = '';
     location.reload();
   };
@@ -2928,7 +3027,7 @@ function showRenameModal(chatId) {
   const modal = el('div', { className: 'modal' });
   modal.innerHTML = `
     <h2>Chat umbenennen</h2>
-    <input type="text" id="rename-input" value="${esc(chat.title)}" maxlength="80">
+    <input type="text" id="rename-input" value="${escAttr(chat.title)}" maxlength="80">
     <div class="modal-btns">
       <button class="btn-cancel">Abbrechen</button>
       <button class="btn-confirm">Speichern</button>
