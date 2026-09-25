@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Funktionen visualisieren · Klasse 9/10</title>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+};
+</script>
+<script async id="MathJax-script"
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<style>
+:root{
+  --bg:#f6f7f8;
+  --surface:#ffffff;
+  --surface-2:#f2f3f5;
+  --surface-3:#eceef1;
+  --text:#111317;
+  --muted:#68707c;
+  --border:#dfe3e8;
+  --accent:#111317;
+  --accent-contrast:#ffffff;
+  --series:#2563eb;
+  --base:#d97706;
+  --grid:#e7e9ed;
+  --axis:#7d8794;
+  --danger:#c2415b;
+  --radius:18px;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 10px 30px rgba(16,24,40,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d0f12;
+    --surface:#14171b;
+    --surface-2:#1a1e23;
+    --surface-3:#20252b;
+    --text:#f4f6f8;
+    --muted:#9ba5b1;
+    --border:#2b323a;
+    --accent:#f5f7fa;
+    --accent-contrast:#0b0d10;
+    --series:#76a7ff;
+    --base:#f1b26a;
+    --grid:#242a31;
+    --axis:#8b96a3;
+    --shadow:none;
+  }
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button,select,input{font:inherit}
+button,select,input[type=range]{touch-action:manipulation}
+.app{
+  max-width:1220px;
+  margin:0 auto;
+  padding:clamp(14px,3vw,28px);
+  padding-bottom:max(24px,env(safe-area-inset-bottom));
+}
+.hero{margin-bottom:18px}
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:var(--muted);
+  font-size:.78rem;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.hero h1{
+  margin:0;
+  font-size:clamp(1.8rem,5vw,3.1rem);
+  line-height:1.02;
+  letter-spacing:-.045em;
+}
+.hero p{
+  max-width:760px;
+  color:var(--muted);
+  line-height:1.6;
+  margin:12px 0 0;
+}
+.shell{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 340px;
+  gap:16px;
+  align-items:start;
+}
+.panel{
+  min-width:0;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+.main-panel{padding:14px}
+.controls-top{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) auto;
+  gap:10px;
+  align-items:end;
+  margin-bottom:12px;
+}
+.field-label{
+  display:block;
+  color:var(--muted);
+  font-size:.78rem;
+  font-weight:700;
+  margin:0 0 6px;
+}
+.select{
+  width:100%;
+  min-height:46px;
+  padding:0 42px 0 13px;
+  color:var(--text);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:12px;
+  outline:none;
+}
+.button-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{
+  min-height:44px;
+  min-width:44px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  border-radius:12px;
+  padding:0 13px;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,transform .15s ease;
+}
+.btn:hover{background:var(--surface-3)}
+.btn:active{transform:scale(.98)}
+.btn.primary{
+  background:var(--accent);
+  color:var(--accent-contrast);
+  border-color:var(--accent);
+  font-weight:700;
+}
+.btn:focus-visible,.select:focus-visible,input:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--series) 25%,transparent);
+  outline-offset:2px;
+}
+.graph-wrap{
+  position:relative;
+  overflow:hidden;
+  border-radius:15px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+}
+canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  min-height:330px;
+  touch-action:none;
+  cursor:grab;
+}
+canvas.dragging{cursor:grabbing}
+.graph-hint{
+  position:absolute;
+  left:12px;
+  bottom:10px;
+  padding:6px 9px;
+  border:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  color:var(--muted);
+  border-radius:999px;
+  font-size:.72rem;
+  pointer-events:none;
+  backdrop-filter:blur(10px);
+}
+.formula-card{
+  margin-top:12px;
+  padding:14px 15px;
+  border-radius:14px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+}
+.formula-label{
+  color:var(--muted);
+  font-size:.75rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:7px;
+}
+.formula{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  overflow-x:auto;
+  font-size:clamp(1rem,2vw,1.22rem);
+}
+.legend{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  color:var(--muted);
+  font-size:.79rem;
+  margin-top:10px;
+}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.line-chip{width:18px;height:3px;border-radius:4px;display:inline-block}
+.side{padding:15px}
+.side-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--border);
+}
+.side h2{font-size:1.06rem;margin:0}
+.badge{
+  color:var(--muted);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:.72rem;
+}
+.param{
+  padding:14px 0;
+  border-bottom:1px solid var(--border);
+}
+.param:last-child{border-bottom:0}
+.param-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+.param-name{
+  min-width:0;
+  font-size:.9rem;
+  line-height:1.35;
+}
+.param-name strong{font-size:1rem}
+.param-value{
+  flex:0 0 auto;
+  min-width:50px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  font-weight:700;
+}
+input[type=range]{
+  width:100%;
+  min-height:30px;
+  accent-color:var(--series);
+}
+.facts{
+  display:grid;
+  gap:10px;
+  margin-top:14px;
+}
+.fact{
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--surface-2);
+}
+.fact-title{
+  font-size:.78rem;
+  color:var(--muted);
+  font-weight:700;
+  margin-bottom:5px;
+}
+.fact-body{font-size:.88rem;line-height:1.52}
+.side-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.side-actions .btn{flex:1}
+.footer-note{
+  margin:14px 2px 0;
+  color:var(--muted);
+  font-size:.78rem;
+  line-height:1.5;
+}
+.mobile-section-title{
+  display:none;
+  color:var(--muted);
+  font-size:.75rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:8px;
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .side{padding:14px}
+}
+@media(max-width:640px){
+  .app{padding:12px}
+  .hero{margin-bottom:14px}
+  .hero p{font-size:.92rem}
+  .main-panel{padding:10px}
+  .controls-top{grid-template-columns:1fr}
+  .button-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    width:100%;
+  }
+  .btn{width:100%;padding:0 9px}
+  .button-row .btn:last-child{grid-column:1/-1}
+  .graph-wrap{border-radius:12px}
+  canvas{min-height:300px}
+  .graph-hint{display:none}
+  .formula-card{padding:12px;margin-top:10px}
+  .side-head{align-items:flex-start}
+  .facts{grid-template-columns:1fr}
+  .mobile-section-title{display:block}
+}
+@media(max-width:380px){
+  .button-row{grid-template-columns:1fr 1fr}
+  .button-row .btn:last-child{grid-column:1/-1}
+  .badge{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="hero">
+    <div class="eyebrow">Mathematik · Klasse 9/10</div>
+    <h1>Funktionen verstehen, indem du sie veränderst.</h1>
+    <p>Wähle einen Funktionstyp, passe die Parameter an und beobachte sofort, wie sich der Graph verändert. Bei trigonometrischen Funktionen wird die x-Achse in Vielfachen von \(\pi\) dargestellt.</p>
+  </section>
+
+  <div class="shell">
+    <section class="panel main-panel">
+      <div class="controls-top">
+        <div>
+          <label class="field-label" for="type">Funktionstyp</label>
+          <select class="select" id="type"></select>
+        </div>
+        <div class="button-row">
+          <button class="btn" id="zoomIn" type="button" aria-label="Hineinzoomen">+</button>
+          <button class="btn" id="zoomOut" type="button" aria-label="Herauszoomen">−</button>
+          <button class="btn" id="resetView" type="button">Ansicht zurücksetzen</button>
+        </div>
+      </div>
+
+      <div class="graph-wrap">
+        <canvas id="graph" width="960" height="600" aria-label="Interaktives Koordinatensystem"></canvas>
+        <div class="graph-hint">Ziehen zum Verschieben · Mausrad zum Zoomen</div>
+      </div>
+
+      <div class="formula-card">
+        <div class="formula-label">Funktionsgleichung</div>
+        <div class="formula" id="formula">\(f(x)=x\)</div>
+      </div>
+
+      <div class="legend">
+        <span><i class="line-chip" style="background:var(--series)"></i>Veränderte Funktion</span>
+        <span><i class="line-chip" style="background:var(--base)"></i>Grundfunktion</span>
+      </div>
+    </section>
+
+    <aside class="panel side">
+      <div class="side-head">
+        <h2 id="title">Parameter</h2>
+        <span class="badge" id="category">Funktion</span>
+      </div>
+
+      <div id="params"></div>
+
+      <div class="facts">
+        <div class="fact">
+          <div class="fact-title">Eigenschaften</div>
+          <div class="fact-body" id="properties"></div>
+        </div>
+        <div class="fact">
+          <div class="fact-title">Definitionsmenge</div>
+          <div class="fact-body" id="domain"></div>
+        </div>
+        <div class="fact">
+          <div class="fact-title">Merke</div>
+          <div class="fact-body" id="notes"></div>
+        </div>
+      </div>
+
+      <div class="side-actions">
+        <button class="btn primary" id="resetParams" type="button">Parameter zurücksetzen</button>
+      </div>
+    </aside>
+  </div>
+
+  <p class="footer-note">
+    Die LaTeX-Darstellung wird über MathJax geladen. Ohne Internet bleibt die Visualisierung funktionsfähig, die Formeln erscheinen dann lediglich als LaTeX-Text.
+  </p>
+</main>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const canvas = $("#graph");
+  const ctx = canvas.getContext("2d");
+
+  const defs = {
+    linear: {
+      name:"Lineare Funktion", category:"Linear",
+      tex:p=>`f(x)=${n(p.m)}x${sgn(p.b)}`,
+      params:[["m","Steigung",-5,5,.1,1],["b","y-Achsenabschnitt",-6,6,.1,0]],
+      fn:(x,p)=>p.m*x+p.b, base:x=>x,
+      properties:"Gerade. Die Steigung bestimmt Richtung und Steilheit.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"\\(m>0\\): steigend, \\(m<0\\): fallend, \\(m=0\\): konstant."
+    },
+    proportional: {
+      name:"Proportionale Funktion", category:"Linear",
+      tex:p=>`f(x)=${n(p.k)}x`,
+      params:[["k","Proportionalitätsfaktor",-5,5,.1,1]],
+      fn:(x,p)=>p.k*x, base:x=>x,
+      properties:"Gerade durch den Ursprung.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Für \\(x\\neq0\\) gilt \\(\\frac{y}{x}=k\\)."
+    },
+    quadratic: {
+      name:"Quadratische Funktion", category:"Quadratisch",
+      tex:p=>`f(x)=${n(p.a)}\\left(x${sx(p.d)}\\right)^2${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      fn:(x,p)=>p.a*(x-p.d)**2+p.e, base:x=>x*x,
+      properties:"Parabel. \\(|a|\\) bestimmt die Öffnungsweite, das Vorzeichen die Öffnungsrichtung.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Scheitelpunkt: \\(S(d\\mid e)\\)."
+    },
+    cubic: {
+      name:"Kubische Funktion", category:"Potenz",
+      tex:p=>`f(x)=${n(p.a)}\\left(x${sx(p.d)}\\right)^3${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>p.a*(x-p.d)**3+p.e, base:x=>x**3,
+      properties:"S-förmige Potenzfunktion dritten Grades.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Bei dieser Grundform liegt der Wendepunkt bei \\(W(d\\mid e)\\)."
+    },
+    powerEven: {
+      name:"Potenzfunktion · gerader Exponent", category:"Potenz",
+      tex:p=>`f(x)=${n(p.a)}x^{${evenExp(p.n)}}`,
+      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["n","Gerader Exponent",2,10,2,4]],
+      fn:(x,p)=>p.a*x**evenExp(p.n), base:x=>x*x,
+      properties:"Achsensymmetrisch zur y-Achse.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Beispiele: \\(x^2,x^4,x^6\\)."
+    },
+    powerOdd: {
+      name:"Potenzfunktion · ungerader Exponent", category:"Potenz",
+      tex:p=>`f(x)=${n(p.a)}x^{${oddExp(p.n)}}`,
+      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["n","Ungerader Exponent",1,9,2,3]],
+      fn:(x,p)=>p.a*x**oddExp(p.n), base:x=>x**3,
+      properties:"Punktsymmetrisch zum Ursprung.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Beispiele: \\(x,x^3,x^5\\)."
+    },
+    absolute: {
+      name:"Betragsfunktion", category:"Weitere",
+      tex:p=>`f(x)=${n(p.a)}\\left|x${sx(p.d)}\\right|${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      fn:(x,p)=>p.a*Math.abs(x-p.d)+p.e, base:x=>Math.abs(x),
+      properties:"V-förmig und stückweise linear.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Knickpunkt: \\((d\\mid e)\\)."
+    },
+    root: {
+      name:"Wurzelfunktion", category:"Wurzel",
+      tex:p=>`f(x)=${n(p.a)}\\sqrt{x${sx(p.d)}}${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      fn:(x,p)=>x-p.d>=0?p.a*Math.sqrt(x-p.d)+p.e:NaN, base:x=>x>=0?Math.sqrt(x):NaN,
+      properties:"Umkehrung der quadratischen Grundfunktion auf einem eingeschränkten Bereich.",
+      domain:"\\(D=\\{x\\in\\mathbb{R}\\mid x\\ge d\\}\\)",
+      notes:"Unter einer Quadratwurzel darf im Reellen kein negativer Wert stehen."
+    },
+    inverse: {
+      name:"Antiproportionale Funktion", category:"Gebrochenrational",
+      tex:p=>`f(x)=\\frac{${n(p.a)}}{x}`,
+      params:[["a","Proportionalitätsfaktor",-8,8,.2,1]],
+      fn:(x,p)=>Math.abs(x)<1e-10?NaN:p.a/x, base:x=>Math.abs(x)<1e-10?NaN:1/x,
+      properties:"Hyperbel mit zwei Ästen.",
+      domain:"\\(D=\\mathbb{R}\\setminus\\{0\\}\\)",
+      notes:"Bei der Grundfunktion sind \\(x=0\\) und \\(y=0\\) Asymptoten."
+    },
+    rational: {
+      name:"Gebrochenrationale Funktion", category:"Gebrochenrational",
+      tex:p=>`f(x)=\\frac{${n(p.a)}}{x${sx(p.d)}}${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-8,8,.2,1],["d","Senkrechte Asymptote",-5,5,.1,0],["e","Waagerechte Asymptote",-5,5,.1,0]],
+      fn:(x,p)=>Math.abs(x-p.d)<1e-10?NaN:p.a/(x-p.d)+p.e, base:x=>Math.abs(x)<1e-10?NaN:1/x,
+      properties:"Verschobene Hyperbel.",
+      domain:"\\(D=\\mathbb{R}\\setminus\\{d\\}\\)",
+      notes:"Asymptoten: \\(x=d\\) und \\(y=e\\)."
+    },
+    sine: {
+      name:"Sinusfunktion", category:"Trigonometrisch",
+      tex:p=>`f(x)=${n(p.a)}\\sin\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
+      params:[["a","Amplitude / Spiegelung",-4,4,.1,1],["b","Frequenzfaktor",-4,4,.1,1],["c","Verschiebung in x-Richtung",-6.283,6.283,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>p.a*Math.sin(p.b*(x-p.c))+p.d, base:x=>Math.sin(x),
+      properties:"Periodische Wellenfunktion.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Amplitude: \\(|a|\\). Periodenlänge: \\(T=\\frac{2\\pi}{|b|}\\) für \\(b\\neq0\\)."
+    },
+    cosine: {
+      name:"Kosinusfunktion", category:"Trigonometrisch",
+      tex:p=>`f(x)=${n(p.a)}\\cos\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
+      params:[["a","Amplitude / Spiegelung",-4,4,.1,1],["b","Frequenzfaktor",-4,4,.1,1],["c","Verschiebung in x-Richtung",-6.283,6.283,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>p.a*Math.cos(p.b*(x-p.c))+p.d, base:x=>Math.cos(x),
+      properties:"Periodische Wellenfunktion.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"Amplitude: \\(|a|\\). Periodenlänge: \\(T=\\frac{2\\pi}{|b|}\\) für \\(b\\neq0\\)."
+    },
+    tangent: {
+      name:"Tangensfunktion", category:"Trigonometrisch",
+      tex:p=>`f(x)=${n(p.a)}\\tan\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
+      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["b","Frequenzfaktor",-3,3,.1,1],["c","Verschiebung in x-Richtung",-3.142,3.142,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>p.a*Math.tan(p.b*(x-p.c))+p.d, base:x=>Math.tan(x),
+      properties:"Periodische Funktion mit senkrechten Asymptoten.",
+      domain:"Nicht alle reellen Zahlen.",
+      notes:"Grundfunktion: Periode \\(T=\\pi\\), Nullstellen bei \\(x=k\\pi\\)."
+    },
+    exponential: {
+      name:"Exponentialfunktion", category:"Exponential",
+      tex:p=>`f(x)=${n(p.a)}\\cdot ${n(p.q)}^{\\,x${sx(p.d)}}${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["q","Basis",.1,4,.1,2],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>p.q>0?p.a*Math.pow(p.q,x-p.d)+p.e:NaN, base:x=>2**x,
+      properties:"Beschreibt exponentielles Wachstum oder Zerfall.",
+      domain:"\\(D=\\mathbb{R}\\)",
+      notes:"\\(q>1\\): Wachstum, \\(0<q<1\\): Zerfall."
+    },
+    logarithm: {
+      name:"Logarithmusfunktion", category:"Logarithmisch",
+      tex:p=>`f(x)=${n(p.a)}\\log_{${n(p.q)}}\\!\\left(x${sx(p.d)}\\right)${sgn(p.e)}`,
+      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["q","Basis",.2,4,.1,2],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      fn:(x,p)=>(x-p.d)>0&&p.q>0&&Math.abs(p.q-1)>1e-9?p.a*Math.log(x-p.d)/Math.log(p.q)+p.e:NaN,
+      base:x=>x>0?Math.log(x)/Math.log(2):NaN,
+      properties:"Umkehrfunktion einer Exponentialfunktion.",
+      domain:"\\(D=\\{x\\in\\mathbb{R}\\mid x>d\\}\\)",
+      notes:"Die Basis erfüllt \\(q>0\\) und \\(q\\neq1\\)."
+    }
+  };
+
+  function n(v){
+    if(Math.abs(v)<1e-9)v=0;
+    return Number(v).toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+  }
+  function sgn(v){
+    v=Number(v);
+    return v>=0?`+${n(v)}`:`-${n(Math.abs(v))}`;
+  }
+  function sx(v){
+    v=Number(v);
+    return v>=0?`-${n(v)}`:`+${n(Math.abs(v))}`;
+  }
+  function evenExp(v){ return Math.max(2,Math.round(v/2)*2); }
+  function oddExp(v){ return Math.max(1,Math.round((v-1)/2)*2+1); }
+
+  Object.entries(defs).forEach(([key,d])=>{
+    const o=document.createElement("option");
+    o.value=key;o.textContent=d.name;$("#type").appendChild(o);
+  });
+
+  let current="linear";
+  let params={};
+  let view={xMin:-10,xMax:10,yMin:-7,yMax:7};
+  let lastSize={w:800,h:500};
+
+  function initParams(){
+    params={};
+    defs[current].params.forEach(([key,,,,,def])=>params[key]=def);
+  }
+
+  function typeset(){
+    if(window.MathJax?.typesetPromise){
+      MathJax.typesetPromise([$("#formula"),$("#domain"),$("#notes"),$("#properties")]).catch(()=>{});
+    }
+  }
+
+  function renderControls(){
+    const d=defs[current];
+    $("#title").textContent=d.name;
+    $("#category").textContent=d.category;
+    $("#properties").innerHTML=d.properties;
+    $("#domain").innerHTML=d.domain;
+    $("#notes").innerHTML=d.notes;
+
+    const box=$("#params");
+    box.innerHTML="";
+    d.params.forEach(([key,label,min,max,step])=>{
+      const wrap=document.createElement("div");
+      wrap.className="param";
+      wrap.innerHTML=`
+        <div class="param-top">
+          <div class="param-name"><strong>\\(${key}\\)</strong><br>${label}</div>
+          <div class="param-value" id="v-${key}">${n(params[key])}</div>
+        </div>
+        <input id="p-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${params[key]}" aria-label="${label}">
+      `;
+      box.appendChild(wrap);
+      wrap.querySelector("input").addEventListener("input",e=>{
+        params[key]=Number(e.target.value);
+        $("#v-"+key).textContent=n(params[key]);
+        render();
+      });
+    });
+    typeset();
+  }
+
+  function resizeCanvas(){
+    const ratio=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+    const rect=canvas.getBoundingClientRect();
+    const w=Math.max(280,rect.width);
+    let h;
+    if(w<430) h=Math.max(300,w*0.92);
+    else if(w<700) h=w*0.68;
+    else h=Math.min(560,w*0.60);
+    canvas.style.height=h+"px";
+    canvas.width=Math.round(w*ratio);
+    canvas.height=Math.round(h*ratio);
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    lastSize={w,h};
+    return lastSize;
+  }
+
+  function isTrig(){ return current==="sine"||current==="cosine"||current==="tangent"; }
+
+  function render(){
+    const {w,h}=resizeCanvas();
+    const d=defs[current];
+
+    $("#formula").innerHTML=`\\[${d.tex(params)}\\]`;
+    typeset();
+
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle=css("--surface-2");
+    ctx.fillRect(0,0,w,h);
+
+    const xToPx=x=>(x-view.xMin)/(view.xMax-view.xMin)*w;
+    const yToPx=y=>h-(y-view.yMin)/(view.yMax-view.yMin)*h;
+
+    drawGrid(w,h,xToPx,yToPx);
+    drawFunction(d.base,{},css("--base"),xToPx,yToPx,w,h);
+    drawFunction(d.fn,params,css("--series"),xToPx,yToPx,w,h);
+  }
+
+  function drawGrid(w,h,xToPx,yToPx){
+    ctx.font = w<420 ? "11px system-ui" : "12px system-ui";
+    ctx.textBaseline="middle";
+    ctx.fillStyle=css("--muted");
+    ctx.strokeStyle=css("--grid");
+    ctx.lineWidth=1;
+
+    const yStep=niceStep((view.yMax-view.yMin)/(w<420?6:8));
+
+    ctx.beginPath();
+
+    if(isTrig()){
+      const xStep=piStep((view.xMax-view.xMin)/(w<420?5:8));
+      let kStart=Math.ceil(view.xMin/xStep);
+      let kEnd=Math.floor(view.xMax/xStep);
+      for(let k=kStart;k<=kEnd;k++){
+        const x=k*xStep, px=xToPx(x);
+        ctx.moveTo(px,0);ctx.lineTo(px,h);
+      }
+    } else {
+      const xStep=niceStep((view.xMax-view.xMin)/(w<420?5:9));
+      for(let x=Math.ceil(view.xMin/xStep)*xStep;x<=view.xMax+1e-9;x+=xStep){
+        const px=xToPx(x);ctx.moveTo(px,0);ctx.lineTo(px,h);
+      }
+    }
+
+    for(let y=Math.ceil(view.yMin/yStep)*yStep;y<=view.yMax+1e-9;y+=yStep){
+      const py=yToPx(y);ctx.moveTo(0,py);ctx.lineTo(w,py);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle=css("--axis");
+    ctx.lineWidth=1.4;
+    ctx.beginPath();
+    if(view.yMin<=0&&view.yMax>=0){ const py=yToPx(0);ctx.moveTo(0,py);ctx.lineTo(w,py); }
+    if(view.xMin<=0&&view.xMax>=0){ const px=xToPx(0);ctx.moveTo(px,0);ctx.lineTo(px,h); }
+    ctx.stroke();
+
+    // x labels
+    const axisY=(view.yMin<=0&&view.yMax>=0)?yToPx(0):h-14;
+    if(isTrig()){
+      const step=piStep((view.xMax-view.xMin)/(w<420?5:8));
+      const kStart=Math.ceil(view.xMin/step);
+      const kEnd=Math.floor(view.xMax/step);
+      for(let k=kStart;k<=kEnd;k++){
+        const x=k*step;
+        const px=xToPx(x);
+        const label=piLabel(x);
+        const y=clamp(axisY+14,12,h-10);
+        drawCenteredText(label,px,y,w);
+      }
+    } else {
+      const xStep=niceStep((view.xMax-view.xMin)/(w<420?5:9));
+      for(let x=Math.ceil(view.xMin/xStep)*xStep;x<=view.xMax+1e-9;x+=xStep){
+        if(Math.abs(x)<1e-9) continue;
+        const px=xToPx(x);
+        drawCenteredText(n(x),px,clamp(axisY+14,12,h-10),w);
+      }
+    }
+
+    // y labels
+    const axisX=(view.xMin<=0&&view.xMax>=0)?xToPx(0):4;
+    for(let y=Math.ceil(view.yMin/yStep)*yStep;y<=view.yMax+1e-9;y+=yStep){
+      if(Math.abs(y)<1e-9) continue;
+      const py=yToPx(y);
+      const text=n(y);
+      const tx=clamp(axisX+6,5,w-30);
+      ctx.textAlign="left";
+      ctx.fillText(text,tx,py-7);
+    }
+  }
+
+  function drawCenteredText(text,x,y,w){
+    const width=ctx.measureText(text).width;
+    let tx=x;
+    if(tx-width/2<3) tx=3+width/2;
+    if(tx+width/2>w-3) tx=w-3-width/2;
+    ctx.textAlign="center";
+    ctx.fillText(text,tx,y);
+  }
+
+  function piStep(raw){
+    const pi=Math.PI;
+    const choices=[pi/4,pi/2,pi,2*pi,4*pi,8*pi];
+    for(const c of choices) if(c>=raw) return c;
+    return 8*pi*Math.ceil(raw/(8*pi));
+  }
+
+  function piLabel(x){
+    const halfUnits=Math.round(x/(Math.PI/2)); // x = halfUnits * π/2
+    if(halfUnits===0) return "0";
+    const sign=halfUnits<0?"−":"";
+    const a=Math.abs(halfUnits);
+    if(a===1) return sign+"π/2";
+    if(a%2===0){
+      const m=a/2;
+      return sign+(m===1?"π":`${m}π`);
+    }
+    return sign+`${a}π/2`;
+  }
+
+  function drawFunction(fn,p,color,xToPx,yToPx,w,h){
+    ctx.strokeStyle=color;
+    ctx.lineWidth=w<430?2.2:2.7;
+    ctx.lineJoin="round";
+    ctx.lineCap="round";
+    ctx.beginPath();
+
+    let drawing=false,lastY=null;
+    const samples=Math.max(900,Math.floor(w*1.8));
+    for(let i=0;i<=samples;i++){
+      const x=view.xMin+(view.xMax-view.xMin)*i/samples;
+      let y;
+      try{y=fn(x,p)}catch{y=NaN}
+      const px=xToPx(x),py=yToPx(y);
+      const valid=Number.isFinite(y)&&py>-h*5&&py<h*6;
+      if(!valid||(lastY!==null&&Math.abs(py-lastY)>h*.65)){
+        drawing=false;lastY=null;continue;
+      }
+      if(!drawing){ctx.moveTo(px,py);drawing=true}
+      else ctx.lineTo(px,py);
+      lastY=py;
+    }
+    ctx.stroke();
+  }
+
+  function niceStep(raw){
+    const pow=10**Math.floor(Math.log10(raw));
+    const n=raw/pow;
+    return (n<1.5?1:n<3.5?2:n<7.5?5:10)*pow;
+  }
+  function clamp(v,min,max){return Math.min(max,Math.max(min,v))}
+  function css(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim()}
+
+  function resetViewForType(){
+    if(isTrig()) view={xMin:-2*Math.PI,xMax:2*Math.PI,yMin:-3.5,yMax:3.5};
+    else view={xMin:-10,xMax:10,yMin:-7,yMax:7};
+  }
+
+  $("#type").addEventListener("change",()=>{
+    current=$("#type").value;
+    initParams();
+    resetViewForType();
+    renderControls();
+    render();
+  });
+
+  $("#resetParams").addEventListener("click",()=>{initParams();renderControls();render()});
+  $("#resetView").addEventListener("click",()=>{resetViewForType();render()});
+  $("#zoomIn").addEventListener("click",()=>zoom(.78));
+  $("#zoomOut").addEventListener("click",()=>zoom(1.28));
+
+  function zoom(f,cx=(view.xMin+view.xMax)/2,cy=(view.yMin+view.yMax)/2){
+    const hx=(view.xMax-view.xMin)*f/2;
+    const hy=(view.yMax-view.yMin)*f/2;
+    view={xMin:cx-hx,xMax:cx+hx,yMin:cy-hy,yMax:cy+hy};
+    render();
+  }
+
+  let drag=null;
+  canvas.addEventListener("pointerdown",e=>{
+    const r=canvas.getBoundingClientRect();
+    drag={x:e.clientX,y:e.clientY,view:{...view},w:r.width,h:r.height};
+    canvas.classList.add("dragging");
+    try{canvas.setPointerCapture(e.pointerId)}catch{}
+  });
+  canvas.addEventListener("pointermove",e=>{
+    if(!drag)return;
+    const dx=(e.clientX-drag.x)/drag.w*(drag.view.xMax-drag.view.xMin);
+    const dy=(e.clientY-drag.y)/drag.h*(drag.view.yMax-drag.view.yMin);
+    view={
+      xMin:drag.view.xMin-dx,xMax:drag.view.xMax-dx,
+      yMin:drag.view.yMin+dy,yMax:drag.view.yMax+dy
+    };
+    render();
+  });
+  function endDrag(){drag=null;canvas.classList.remove("dragging")}
+  canvas.addEventListener("pointerup",endDrag);
+  canvas.addEventListener("pointercancel",endDrag);
+
+  canvas.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    const mx=(e.clientX-r.left)/r.width;
+    const my=(e.clientY-r.top)/r.height;
+    const cx=view.xMin+mx*(view.xMax-view.xMin);
+    const cy=view.yMax-my*(view.yMax-view.yMin);
+    const factor=e.deltaY>0?1.12:.88;
+    const newW=(view.xMax-view.xMin)*factor;
+    const newH=(view.yMax-view.yMin)*factor;
+    view={
+      xMin:cx-mx*newW,
+      xMax:cx+(1-mx)*newW,
+      yMin:cy-(1-my)*newH,
+      yMax:cy+my*newH
+    };
+    render();
+  },{passive:false});
+
+  let resizeTimer;
+  window.addEventListener("resize",()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(render,60);
+  });
+
+  initParams();
+  renderControls();
+  render();
+
+  // MathJax can load after the first render.
+  window.addEventListener("load",()=>setTimeout(typeset,50));
+})();
+</script>
+</body>
+</html>
