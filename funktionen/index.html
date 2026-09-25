@@ -10,7 +10,15 @@
 window.MathJax = {
   tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]']] },
   svg: { fontCache: 'global' },
-  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] },
+  startup: {
+    ready() {
+      MathJax.startup.defaultReady();
+      MathJax.startup.promise.then(() => {
+        window.dispatchEvent(new Event('mathjax-ready'));
+      });
+    }
+  }
 };
 </script>
 <script async id="MathJax-script"
@@ -208,6 +216,14 @@ canvas.dragging{cursor:grabbing}
   overflow-x:auto;
   font-size:clamp(1rem,2vw,1.22rem);
 }
+.formula mjx-container{
+  margin:0!important;
+}
+.formula-rendered{
+  display:inline-flex;
+  align-items:center;
+  min-width:max-content;
+}
 .legend{
   display:flex;
   gap:16px;
@@ -365,7 +381,7 @@ input[type=range]{
 
       <div class="formula-card">
         <div class="formula-label">Funktionsgleichung</div>
-        <div class="formula" id="formula">\(f(x)=x\)</div>
+        <div class="formula" id="formula"><span aria-hidden="true">f(x) = x</span></div>
       </div>
 
       <div class="legend">
@@ -597,10 +613,38 @@ input[type=range]{
     MathJax.typesetPromise(valid).catch(()=>{});
   }
 
-  let formulaTypesetTimer=null;
-  function typesetFormula(){
-    clearTimeout(formulaTypesetTimer);
-    formulaTypesetTimer=setTimeout(()=>typesetNodes([$("#formula")]),20);
+  let formulaRenderVersion=0;
+  let pendingFormulaTex=null;
+
+  async function renderFormulaAtomically(tex){
+    const formulaEl=$("#formula");
+    const version=++formulaRenderVersion;
+    pendingFormulaTex=tex;
+
+    // Never put raw TeX into the visible DOM. Keep the old rendered
+    // formula in place until MathJax has completed the new one.
+    if(!window.MathJax?.tex2svgPromise) return;
+
+    try{
+      const node=await MathJax.tex2svgPromise(tex,{display:true});
+      if(version!==formulaRenderVersion) return;
+
+      const wrap=document.createElement("span");
+      wrap.className="formula-rendered";
+      const rendered=node.querySelector("mjx-container") || node;
+      wrap.appendChild(rendered.cloneNode(true));
+
+      formulaEl.replaceChildren(wrap);
+      pendingFormulaTex=null;
+    }catch{
+      // Keep the last successfully rendered formula visible.
+    }
+  }
+
+  async function flushPendingFormula(){
+    if(pendingFormulaTex && window.MathJax?.tex2svgPromise){
+      await renderFormulaAtomically(pendingFormulaTex);
+    }
   }
 
   function renderControls(){
@@ -657,10 +701,7 @@ input[type=range]{
     const {w,h}=resizeCanvas();
     const d=defs[current];
 
-    const formulaEl=$("#formula");
-    clearMath([formulaEl]);
-    formulaEl.innerHTML=`\\[${d.tex(params)}\\]`;
-    typesetFormula();
+    renderFormulaAtomically(d.tex(params));
 
     ctx.clearRect(0,0,w,h);
     ctx.fillStyle=css("--surface-2");
@@ -885,13 +926,18 @@ input[type=range]{
   renderControls();
   render();
 
+  window.addEventListener("mathjax-ready",()=>{
+    flushPendingFormula();
+  });
+
   // MathJax kann nach dem ersten Rendern fertig laden.
-  // Dann werden auch statische Formeln und die Parameterbeschriftungen sicher gesetzt.
-  window.addEventListener("load",()=>setTimeout(()=>{
+  // Die Funktionsgleichung wird atomar gerendert, damit niemals roher
+  // LaTeX-Text sichtbar wird.
+  window.addEventListener("load",()=>setTimeout(async()=>{
+    await flushPendingFormula();
     typesetNodes([
       document.querySelector(".hero"),
       $("#params"),
-      $("#formula"),
       $("#domain"),
       $("#notes"),
       $("#properties")
