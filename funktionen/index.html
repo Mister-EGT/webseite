@@ -277,6 +277,30 @@ canvas.dragging{cursor:grabbing}
   font-variant-numeric:tabular-nums;
   font-weight:700;
 }
+.param-range{
+  display:flex;justify-content:space-between;gap:10px;margin-top:1px;
+  color:var(--muted);font-size:.7rem;font-variant-numeric:tabular-nums;
+}
+.param-guide{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.param-guide-title{margin:0;font-size:.95rem}
+.param-guide-sub{margin:5px 0 10px;color:var(--muted);font-size:.78rem;line-height:1.45}
+.guide-list{display:grid;gap:8px}
+.guide-card{border:1px solid var(--border);background:var(--surface-2);border-radius:13px;overflow:hidden}
+.guide-card summary{
+  list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  min-height:44px;padding:10px 12px;cursor:pointer;font-size:.86rem;font-weight:700;
+}
+.guide-card summary::-webkit-details-marker{display:none}
+.guide-card summary::after{content:"+";color:var(--muted);font-size:1.1rem;font-weight:400}
+.guide-card[open] summary::after{content:"−"}
+.guide-content{padding:0 12px 12px;color:var(--muted);font-size:.82rem;line-height:1.55}
+.guide-content p{margin:0 0 9px}.guide-content strong{color:var(--text)}
+.guide-formula-label{display:block;margin:2px 0 5px;color:var(--text);font-size:.74rem;font-weight:700}
+.guide-formula{
+  min-height:34px;display:flex;align-items:center;padding:7px 9px;border:1px solid var(--border);
+  border-radius:9px;background:var(--surface);color:var(--text);overflow-x:auto;
+}
+.guide-formula mjx-container{margin:0!important}
 input[type=range]{
   width:100%;
   min-height:30px;
@@ -398,6 +422,12 @@ input[type=range]{
 
       <div id="params"></div>
 
+      <section class="param-guide" aria-labelledby="paramGuideTitle">
+        <h3 class="param-guide-title" id="paramGuideTitle">Parameter verstehen & berechnen</h3>
+        <p class="param-guide-sub">Öffne einen Parameter. Du siehst seine Wirkung und eine typische Berechnung aus Graphen, Punkten oder charakteristischen Größen.</p>
+        <div class="guide-list" id="paramGuide"></div>
+      </section>
+
       <div class="facts">
         <div class="fact">
           <div class="fact-title">Eigenschaften</div>
@@ -420,7 +450,7 @@ input[type=range]{
   </div>
 
   <p class="footer-note">
-    Die LaTeX-Darstellung wird über MathJax geladen. Ohne Internet bleibt die Visualisierung funktionsfähig, die Formeln erscheinen dann lediglich als LaTeX-Text.
+    Die Graphen funktionieren unabhängig von MathJax. Die Parameterhilfen erklären zusätzlich Wirkung, Ablesen und typische Berechnungswege.
   </p>
 </main>
 
@@ -434,7 +464,7 @@ input[type=range]{
     linear: {
       name:"Lineare Funktion", category:"Linear",
       tex:p=>`f(x)=${n(p.m)}x${sgn(p.b)}`,
-      params:[["m","Steigung",-5,5,.1,1],["b","y-Achsenabschnitt",-6,6,.1,0]],
+      params:[["m","Steigung",-12,12,.1,1],["b","y-Achsenabschnitt",-15,15,.1,0]],
       fn:(x,p)=>p.m*x+p.b, base:x=>x,
       properties:"Gerade. Die Steigung bestimmt Richtung und Steilheit.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -443,7 +473,7 @@ input[type=range]{
     proportional: {
       name:"Proportionale Funktion", category:"Linear",
       tex:p=>`f(x)=${n(p.k)}x`,
-      params:[["k","Proportionalitätsfaktor",-5,5,.1,1]],
+      params:[["k","Proportionalitätsfaktor",-12,12,.1,1]],
       fn:(x,p)=>p.k*x, base:x=>x,
       properties:"Gerade durch den Ursprung.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -452,7 +482,7 @@ input[type=range]{
     quadratic: {
       name:"Quadratische Funktion", category:"Quadratisch",
       tex:p=>`f(x)=${n(p.a)}\\left(x${sx(p.d)}\\right)^2${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      params:[["a","Streckung / Spiegelung",-10,10,.1,1],["d","Verschiebung in x-Richtung",-12,12,.1,0],["e","Verschiebung in y-Richtung",-12,12,.1,0]],
       fn:(x,p)=>p.a*(x-p.d)**2+p.e, base:x=>x*x,
       properties:"Parabel. \\(|a|\\) bestimmt die Öffnungsweite, das Vorzeichen die Öffnungsrichtung.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -461,7 +491,7 @@ input[type=range]{
     cubic: {
       name:"Kubische Funktion", category:"Potenz",
       tex:p=>`f(x)=${n(p.a)}\\left(x${sx(p.d)}\\right)^3${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Streckung / Spiegelung",-8,8,.1,1],["d","Verschiebung in x-Richtung",-10,10,.1,0],["e","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>p.a*(x-p.d)**3+p.e, base:x=>x**3,
       properties:"S-förmige Potenzfunktion dritten Grades.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -470,7 +500,7 @@ input[type=range]{
     powerEven: {
       name:"Potenzfunktion · gerader Exponent", category:"Potenz",
       tex:p=>`f(x)=${n(p.a)}x^{${evenExp(p.n)}}`,
-      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["n","Gerader Exponent",2,10,2,4]],
+      params:[["a","Streckung / Spiegelung",-8,8,.1,1],["n","Gerader Exponent",2,20,2,4]],
       fn:(x,p)=>p.a*x**evenExp(p.n), base:x=>x*x,
       properties:"Achsensymmetrisch zur y-Achse.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -479,7 +509,7 @@ input[type=range]{
     powerOdd: {
       name:"Potenzfunktion · ungerader Exponent", category:"Potenz",
       tex:p=>`f(x)=${n(p.a)}x^{${oddExp(p.n)}}`,
-      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["n","Ungerader Exponent",1,9,2,3]],
+      params:[["a","Streckung / Spiegelung",-8,8,.1,1],["n","Ungerader Exponent",1,19,2,3]],
       fn:(x,p)=>p.a*x**oddExp(p.n), base:x=>x**3,
       properties:"Punktsymmetrisch zum Ursprung.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -488,7 +518,7 @@ input[type=range]{
     absolute: {
       name:"Betragsfunktion", category:"Weitere",
       tex:p=>`f(x)=${n(p.a)}\\left|x${sx(p.d)}\\right|${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      params:[["a","Streckung / Spiegelung",-10,10,.1,1],["d","Verschiebung in x-Richtung",-12,12,.1,0],["e","Verschiebung in y-Richtung",-12,12,.1,0]],
       fn:(x,p)=>p.a*Math.abs(x-p.d)+p.e, base:x=>Math.abs(x),
       properties:"V-förmig und stückweise linear.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -497,7 +527,7 @@ input[type=range]{
     root: {
       name:"Wurzelfunktion", category:"Wurzel",
       tex:p=>`f(x)=${n(p.a)}\\sqrt{x${sx(p.d)}}${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["d","Verschiebung in x-Richtung",-5,5,.1,0],["e","Verschiebung in y-Richtung",-5,5,.1,0]],
+      params:[["a","Streckung / Spiegelung",-10,10,.1,1],["d","Verschiebung in x-Richtung",-12,12,.1,0],["e","Verschiebung in y-Richtung",-12,12,.1,0]],
       fn:(x,p)=>x-p.d>=0?p.a*Math.sqrt(x-p.d)+p.e:NaN, base:x=>x>=0?Math.sqrt(x):NaN,
       properties:"Umkehrung der quadratischen Grundfunktion auf einem eingeschränkten Bereich.",
       domain:"\\(D=\\{x\\in\\mathbb{R}\\mid x\\ge d\\}\\)",
@@ -506,7 +536,7 @@ input[type=range]{
     inverse: {
       name:"Antiproportionale Funktion", category:"Gebrochenrational",
       tex:p=>`f(x)=\\frac{${n(p.a)}}{x}`,
-      params:[["a","Proportionalitätsfaktor",-8,8,.2,1]],
+      params:[["a","Proportionalitätsfaktor",-20,20,.2,1]],
       fn:(x,p)=>Math.abs(x)<1e-10?NaN:p.a/x, base:x=>Math.abs(x)<1e-10?NaN:1/x,
       properties:"Hyperbel mit zwei Ästen.",
       domain:"\\(D=\\mathbb{R}\\setminus\\{0\\}\\)",
@@ -515,7 +545,7 @@ input[type=range]{
     rational: {
       name:"Gebrochenrationale Funktion", category:"Gebrochenrational",
       tex:p=>`f(x)=\\frac{${n(p.a)}}{x${sx(p.d)}}${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-8,8,.2,1],["d","Senkrechte Asymptote",-5,5,.1,0],["e","Waagerechte Asymptote",-5,5,.1,0]],
+      params:[["a","Streckung / Spiegelung",-20,20,.2,1],["d","Senkrechte Asymptote",-12,12,.1,0],["e","Waagerechte Asymptote",-12,12,.1,0]],
       fn:(x,p)=>Math.abs(x-p.d)<1e-10?NaN:p.a/(x-p.d)+p.e, base:x=>Math.abs(x)<1e-10?NaN:1/x,
       properties:"Verschobene Hyperbel.",
       domain:"\\(D=\\mathbb{R}\\setminus\\{d\\}\\)",
@@ -524,7 +554,7 @@ input[type=range]{
     sine: {
       name:"Sinusfunktion", category:"Trigonometrisch",
       tex:p=>`f(x)=${n(p.a)}\\sin\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
-      params:[["a","Amplitude / Spiegelung",-4,4,.1,1],["b","Frequenzfaktor",-4,4,.1,1],["c","Verschiebung in x-Richtung",-6.283,6.283,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Amplitude / Spiegelung",-10,10,.1,1],["b","Frequenzfaktor",-8,8,.1,1],["c","Verschiebung in x-Richtung",-12.5663706144,12.5663706144,.1570796327,0],["d","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>p.a*Math.sin(p.b*(x-p.c))+p.d, base:x=>Math.sin(x),
       properties:"Periodische Wellenfunktion.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -533,7 +563,7 @@ input[type=range]{
     cosine: {
       name:"Kosinusfunktion", category:"Trigonometrisch",
       tex:p=>`f(x)=${n(p.a)}\\cos\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
-      params:[["a","Amplitude / Spiegelung",-4,4,.1,1],["b","Frequenzfaktor",-4,4,.1,1],["c","Verschiebung in x-Richtung",-6.283,6.283,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Amplitude / Spiegelung",-10,10,.1,1],["b","Frequenzfaktor",-8,8,.1,1],["c","Verschiebung in x-Richtung",-12.5663706144,12.5663706144,.1570796327,0],["d","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>p.a*Math.cos(p.b*(x-p.c))+p.d, base:x=>Math.cos(x),
       properties:"Periodische Wellenfunktion.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -542,7 +572,7 @@ input[type=range]{
     tangent: {
       name:"Tangensfunktion", category:"Trigonometrisch",
       tex:p=>`f(x)=${n(p.a)}\\tan\\!\\left(${n(p.b)}\\left(x${sx(p.c)}\\right)\\right)${sgn(p.d)}`,
-      params:[["a","Streckung / Spiegelung",-3,3,.1,1],["b","Frequenzfaktor",-3,3,.1,1],["c","Verschiebung in x-Richtung",-3.142,3.142,.15708,0],["d","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Streckung / Spiegelung",-8,8,.1,1],["b","Frequenzfaktor",-8,8,.1,1],["c","Verschiebung in x-Richtung",-12.5663706144,12.5663706144,.1570796327,0],["d","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>p.a*Math.tan(p.b*(x-p.c))+p.d, base:x=>Math.tan(x),
       properties:"Periodische Funktion mit senkrechten Asymptoten.",
       domain:"Nicht alle reellen Zahlen.",
@@ -551,7 +581,7 @@ input[type=range]{
     exponential: {
       name:"Exponentialfunktion", category:"Exponential",
       tex:p=>`f(x)=${n(p.a)}\\cdot ${n(p.q)}^{\\,x${sx(p.d)}}${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["q","Basis",.1,4,.1,2],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Streckung / Spiegelung",-10,10,.1,1],["q","Basis",.1,10,.1,2],["d","Verschiebung in x-Richtung",-10,10,.1,0],["e","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>p.q>0?p.a*Math.pow(p.q,x-p.d)+p.e:NaN, base:x=>2**x,
       properties:"Beschreibt exponentielles Wachstum oder Zerfall.",
       domain:"\\(D=\\mathbb{R}\\)",
@@ -560,7 +590,7 @@ input[type=range]{
     logarithm: {
       name:"Logarithmusfunktion", category:"Logarithmisch",
       tex:p=>`f(x)=${n(p.a)}\\log_{${n(p.q)}}\\!\\left(x${sx(p.d)}\\right)${sgn(p.e)}`,
-      params:[["a","Streckung / Spiegelung",-4,4,.1,1],["q","Basis",.2,4,.1,2],["d","Verschiebung in x-Richtung",-4,4,.1,0],["e","Verschiebung in y-Richtung",-4,4,.1,0]],
+      params:[["a","Streckung / Spiegelung",-10,10,.1,1],["q","Basis",.2,10,.1,2],["d","Verschiebung in x-Richtung",-10,10,.1,0],["e","Verschiebung in y-Richtung",-10,10,.1,0]],
       fn:(x,p)=>(x-p.d)>0&&p.q>0&&Math.abs(p.q-1)>1e-9?p.a*Math.log(x-p.d)/Math.log(p.q)+p.e:NaN,
       base:x=>x>0?Math.log(x)/Math.log(2):NaN,
       properties:"Umkehrfunktion einer Exponentialfunktion.",
@@ -583,6 +613,137 @@ input[type=range]{
   }
   function evenExp(v){ return Math.max(2,Math.round(v/2)*2); }
   function oddExp(v){ return Math.max(1,Math.round((v-1)/2)*2+1); }
+
+  const parameterHelp={
+    linear:{
+      m:{effect:"Bestimmt Steilheit und Richtung. Je größer |m|, desto steiler die Gerade.",read:"Nimm zwei Punkte der Geraden und teile die Änderung in y durch die Änderung in x.",tex:"m=\\frac{y_2-y_1}{x_2-x_1}"},
+      b:{effect:"Verschiebt die Gerade nach oben oder unten. b ist der y-Achsenabschnitt.",read:"Setze einen bekannten Punkt und m ein und stelle nach b um.",tex:"b=y_1-mx_1"}
+    },
+    proportional:{k:{effect:"Bestimmt die Steigung; die Gerade bleibt im Ursprung.",read:"Für jeden Punkt mit x≠0 gilt y/x=k.",tex:"k=\\frac{y}{x}"}},
+    quadratic:{
+      a:{effect:"Bestimmt Öffnungsweite und Richtung. |a|>1 macht die Parabel schmaler, 0<|a|<1 breiter; a<0 öffnet nach unten.",read:"Mit Scheitel S(d|e) und einem weiteren Punkt P(x|y) kannst du a bestimmen.",tex:"a=\\frac{y-e}{(x-d)^2}"},
+      d:{effect:"Verschiebt die Parabel horizontal.",read:"d ist die x-Koordinate des Scheitels.",tex:"S=(d\\mid e)"},
+      e:{effect:"Verschiebt die Parabel vertikal.",read:"e ist die y-Koordinate des Scheitels.",tex:"e=y_S"}
+    },
+    cubic:{
+      a:{effect:"Streckt, staucht oder spiegelt die Kurve.",read:"Mit Wendepunkt W(d|e) und einem weiteren Punkt kannst du a bestimmen.",tex:"a=\\frac{y-e}{(x-d)^3}"},
+      d:{effect:"Verschiebt die kubische Grundfunktion horizontal.",read:"d ist hier die x-Koordinate des Wendepunkts.",tex:"W=(d\\mid e)"},
+      e:{effect:"Verschiebt die Funktion vertikal.",read:"e ist hier die y-Koordinate des Wendepunkts.",tex:"e=y_W"}
+    },
+    powerEven:{
+      a:{effect:"Streckt, staucht oder spiegelt die Funktion.",read:"Bei bekanntem n und x≠0 berechnest du a aus einem Punkt.",tex:"a=\\frac{y}{x^n}"},
+      n:{effect:"Bestimmt die Form; gerade n erzeugen y-Achsen-Symmetrie.",read:"n wird meist vorgegeben oder aus der Form erkannt.",tex:"n\\in\\{2,4,6,\\ldots\\}"}
+    },
+    powerOdd:{
+      a:{effect:"Streckt, staucht oder spiegelt die Funktion.",read:"Bei bekanntem n und x≠0 berechnest du a aus einem Punkt.",tex:"a=\\frac{y}{x^n}"},
+      n:{effect:"Bestimmt die Form; ungerade n erzeugen Punktsymmetrie zum Ursprung.",read:"n wird meist vorgegeben oder aus der Form erkannt.",tex:"n\\in\\{1,3,5,\\ldots\\}"}
+    },
+    absolute:{
+      a:{effect:"Bestimmt die Steilheit der Äste und spiegelt bei a<0.",read:"Mit Knickpunkt K(d|e) und einem weiteren Punkt bestimmst du a.",tex:"a=\\frac{y-e}{|x-d|}"},
+      d:{effect:"Verschiebt den Knickpunkt horizontal.",read:"d ist die x-Koordinate des Knickpunkts.",tex:"K=(d\\mid e)"},
+      e:{effect:"Verschiebt den Graphen vertikal.",read:"e ist die y-Koordinate des Knickpunkts.",tex:"e=y_K"}
+    },
+    root:{
+      a:{effect:"Streckt oder staucht die Wurzelfunktion; a<0 spiegelt sie.",read:"Mit Startpunkt A(d|e) und einem weiteren Punkt bestimmst du a.",tex:"a=\\frac{y-e}{\\sqrt{x-d}}"},
+      d:{effect:"Verschiebt den Startpunkt horizontal.",read:"d ist die x-Koordinate des Startpunkts.",tex:"A=(d\\mid e)"},
+      e:{effect:"Verschiebt den Startpunkt vertikal.",read:"e ist die y-Koordinate des Startpunkts.",tex:"e=y_A"}
+    },
+    inverse:{a:{effect:"Bestimmt Streckung, Orientierung und Quadranten der Hyperbel.",read:"Für jeden Punkt P(x|y) gilt x·y=a.",tex:"a=x\\cdot y"}},
+    rational:{
+      a:{effect:"Bestimmt Streckung und Orientierung der verschobenen Hyperbel.",read:"Sind x=d und y=e bekannt, genügt ein weiterer Punkt.",tex:"a=(x-d)(y-e)"},
+      d:{effect:"Legt die senkrechte Asymptote fest.",read:"Lies die senkrechte Asymptote ab.",tex:"x=d"},
+      e:{effect:"Legt die waagerechte Asymptote fest.",read:"Lies die waagerechte Asymptote ab.",tex:"y=e"}
+    },
+    sine:{
+      a:{effect:"|a| ist die Amplitude. a<0 spiegelt die Welle an der Mittellinie.",read:"Bestimme Maximum und Minimum; die Hälfte ihres Abstandes ist die Amplitude.",tex:"|a|=\\frac{y_{\\max}-y_{\\min}}{2}"},
+      b:{effect:"Bestimmt die Frequenz. Größeres |b| bedeutet kürzere Periode.",read:"Miss die Periodenlänge T.",tex:"|b|=\\frac{2\\pi}{T}"},
+      c:{effect:"Verschiebt die Sinuskurve horizontal.",read:"Bei a>0 ist x=c ein aufsteigender Schnitt mit der Mittellinie.",tex:"f(x)=a\\sin\\!\\bigl(b(x-c)\\bigr)+d"},
+      d:{effect:"Ist die Höhe der Mittellinie.",read:"Bilde den Mittelwert aus Maximum und Minimum.",tex:"d=\\frac{y_{\\max}+y_{\\min}}{2}"}
+    },
+    cosine:{
+      a:{effect:"|a| ist die Amplitude; a<0 spiegelt an der Mittellinie.",read:"Bestimme Maximum und Minimum.",tex:"|a|=\\frac{y_{\\max}-y_{\\min}}{2}"},
+      b:{effect:"Bestimmt die Periodenlänge.",read:"Miss den Abstand T zwischen zwei aufeinanderfolgenden Maxima oder Minima.",tex:"|b|=\\frac{2\\pi}{T}"},
+      c:{effect:"Verschiebt die Kosinuskurve horizontal.",read:"Bei a>0 liegt bei x=c ein Maximum, bei a<0 ein Minimum.",tex:"f(c)=a+d"},
+      d:{effect:"Ist die Höhe der Mittellinie.",read:"Bilde den Mittelwert aus Maximum und Minimum.",tex:"d=\\frac{y_{\\max}+y_{\\min}}{2}"}
+    },
+    tangent:{
+      a:{effect:"Streckt oder staucht die Tangenskurve und spiegelt bei a<0.",read:"Sind b, c und d bekannt, setze einen geeigneten Punkt ein.",tex:"a=\\frac{y-d}{\\tan\\!\\bigl(b(x-c)\\bigr)}"},
+      b:{effect:"Bestimmt die Periodenlänge.",read:"Miss die Periodenlänge T.",tex:"|b|=\\frac{\\pi}{T}"},
+      c:{effect:"Verschiebt das Symmetriezentrum horizontal.",read:"Das Zentrum liegt bei x=c.",tex:"f(c)=d"},
+      d:{effect:"Verschiebt die Kurve vertikal.",read:"d ist der y-Wert des Symmetriezentrums.",tex:"d=f(c)"}
+    },
+    exponential:{
+      a:{effect:"Streckt oder spiegelt den Graphen relativ zur Asymptote y=e.",read:"Sind q, d und e bekannt, setze einen Punkt ein.",tex:"a=\\frac{y-e}{q^{\\,x-d}}"},
+      q:{effect:"Ist der Wachstumsfaktor. q>1 bedeutet Wachstum, 0<q<1 Zerfall.",read:"Mit zwei Punkten und bekanntem e lässt sich q bestimmen.",tex:"q=\\left(\\frac{y_2-e}{y_1-e}\\right)^{\\frac{1}{x_2-x_1}}"},
+      d:{effect:"Verschiebt die Funktion horizontal.",read:"Sind a, q und e bekannt, stelle nach d um.",tex:"d=x-\\log_q\\!\\left(\\frac{y-e}{a}\\right)"},
+      e:{effect:"Ist die Höhe der waagerechten Asymptote.",read:"Lies die Asymptote am Graphen ab.",tex:"y=e"}
+    },
+    logarithm:{
+      a:{effect:"Streckt oder spiegelt die Logarithmuskurve.",read:"Sind q, d und e bekannt, setze einen Punkt ein.",tex:"a=\\frac{y-e}{\\log_q(x-d)}"},
+      q:{effect:"Ist die Basis des Logarithmus und bestimmt den Verlauf.",read:"Sind a, d und e bekannt, kann q aus einem geeigneten Punkt bestimmt werden.",tex:"q=(x-d)^{\\frac{a}{y-e}}"},
+      d:{effect:"Legt die senkrechte Asymptote fest.",read:"Lies die senkrechte Asymptote ab.",tex:"x=d"},
+      e:{effect:"Verschiebt den Graphen vertikal.",read:"Bei bekanntem a, q und d lässt sich e aus einem Punkt berechnen.",tex:"e=y-a\\log_q(x-d)"}
+    }
+  };
+
+  function displayParamValue(key,value){
+    if((current==="sine"||current==="cosine"||current==="tangent") && key==="c"){
+      if(Math.abs(value)<1e-9) return "0";
+      return `${n(value/Math.PI)}π`;
+    }
+    return n(value);
+  }
+
+  function atomicTexInto(el,tex){
+    if(!el) return;
+    el.dataset.pendingTex=tex;
+    if(!window.MathJax?.tex2svgPromise) return;
+    const version=String(Number(el.dataset.version||"0")+1);
+    el.dataset.version=version;
+    MathJax.tex2svgPromise(tex,{display:false}).then(node=>{
+      if(el.dataset.version!==version) return;
+      const rendered=node.querySelector("mjx-container") || node;
+      el.replaceChildren(rendered.cloneNode(true));
+      delete el.dataset.pendingTex;
+    }).catch(()=>{});
+  }
+
+  function renderParameterGuide(){
+    const host=$("#paramGuide");
+    host.replaceChildren();
+    const help=parameterHelp[current]||{};
+    defs[current].params.forEach(([key,label])=>{
+      const h=help[key];
+      if(!h) return;
+      const card=document.createElement("details");
+      card.className="guide-card";
+      const summary=document.createElement("summary");
+      summary.textContent=`${key} · ${label}`;
+      const content=document.createElement("div");
+      content.className="guide-content";
+      const p1=document.createElement("p");
+      const b1=document.createElement("strong"); b1.textContent="Wirkung: ";
+      p1.append(b1,document.createTextNode(h.effect));
+      const p2=document.createElement("p");
+      const b2=document.createElement("strong"); b2.textContent="So bestimmst du den Parameter: ";
+      p2.append(b2,document.createTextNode(h.read));
+      const labelEl=document.createElement("span");
+      labelEl.className="guide-formula-label";
+      labelEl.textContent="Typische Berechnung";
+      const formula=document.createElement("div");
+      formula.className="guide-formula";
+      content.append(p1,p2,labelEl,formula);
+      card.append(summary,content);
+      host.appendChild(card);
+      atomicTexInto(formula,h.tex);
+    });
+  }
+
+  function flushGuideMath(){
+    document.querySelectorAll(".guide-formula[data-pending-tex]").forEach(el=>{
+      atomicTexInto(el,el.dataset.pendingTex);
+    });
+  }
 
   Object.entries(defs).forEach(([key,d])=>{
     const o=document.createElement("option");
@@ -665,17 +826,19 @@ input[type=range]{
       wrap.innerHTML=`
         <div class="param-top">
           <div class="param-name"><strong>\\(${key}\\)</strong><br>${label}</div>
-          <div class="param-value" id="v-${key}">${n(params[key])}</div>
+          <div class="param-value" id="v-${key}">${displayParamValue(key,params[key])}</div>
         </div>
         <input id="p-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${params[key]}" aria-label="${label}">
+        <div class="param-range"><span>${displayParamValue(key,min)}</span><span>Bereich</span><span>${displayParamValue(key,max)}</span></div>
       `;
       box.appendChild(wrap);
       wrap.querySelector("input").addEventListener("input",e=>{
         params[key]=Number(e.target.value);
-        $("#v-"+key).textContent=n(params[key]);
+        $("#v-"+key).textContent=displayParamValue(key,params[key]);
         render();
       });
     });
+    renderParameterGuide();
     typesetNodes([box,$("#properties"),$("#domain"),$("#notes")]);
   }
 
@@ -928,6 +1091,7 @@ input[type=range]{
 
   window.addEventListener("mathjax-ready",()=>{
     flushPendingFormula();
+    flushGuideMath();
   });
 
   // MathJax kann nach dem ersten Rendern fertig laden.
@@ -935,6 +1099,7 @@ input[type=range]{
   // LaTeX-Text sichtbar wird.
   window.addEventListener("load",()=>setTimeout(async()=>{
     await flushPendingFormula();
+    flushGuideMath();
     typesetNodes([
       document.querySelector(".hero"),
       $("#params"),
