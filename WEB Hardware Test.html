@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>iPad Stresstest</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; display: flex; justify-content: center; }
+  .box { background: rgba(30,30,30,.9); padding: 18px; border-radius: 14px; width: 100%; max-width: 420px; z-index: 2; }
+  .metrics { display: flex; justify-content: space-around; background: #222; padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+  .val { font-size: 1.6rem; font-weight: bold; color: #4caf50; font-variant-numeric: tabular-nums; }
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
+  input[type=range] { width: 100%; margin: 12px 0; }
+  input[type=checkbox] { transform: scale(1.4); }
+  .btns { display: flex; gap: 10px; margin-top: 15px; }
+  button { flex: 1; padding: 12px; font-weight: bold; border: 0; border-radius: 8px; color: #fff; font-size: 1rem; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="box">
+  <div class="metrics">
+    <div><div class="val" id="fps">--</div><small>EXAKTE FPS</small></div>
+    <div><div class="val" id="ms">-- ms</div><small>FRAME TIME</small></div>
+  </div>
+  <div class="row"><span>CPU Hauptkern</span><input type="checkbox" id="cpu" checked></div>
+  <div class="row"><span>Alle CPU-Kerne (<b id="cores"></b>)</span><input type="checkbox" id="mc" checked></div>
+  <div class="row"><span>GPU Shader (WebGL)</span><input type="checkbox" id="gpu" checked></div>
+  <div class="row"><span>RAM-Flutung</span><input type="checkbox" id="ram"></div>
+  <div style="margin-top:12px">Intensität: <b><span id="ival">100</span>%</b>
+    <input type="range" id="int" min="1" max="1000" value="100" oninput="upd()">
+  </div>
+  <div class="btns">
+    <button style="background:#ff3b30" onclick="run()">Start</button>
+    <button style="background:#444" onclick="halt()">Stopp</button>
+  </div>
+</div>
+
+<script>
+let active = false, id, workers = [], ram = [], last = 0;
+const cores = navigator.hardwareConcurrency || 8;
+document.getElementById('cores').innerText = cores;
+
+const c = document.getElementById('c'), gl = c.getContext('webgl');
+const vs = gl.createShader(gl.VERTEX_SHADER);
+gl.shaderSource(vs, 'attribute vec4 p;void main(){gl_Position=p;}'); gl.compileShader(vs);
+const fs = gl.createShader(gl.FRAGMENT_SHADER);
+gl.shaderSource(fs, 'precision highp float;uniform float uI,uT;void main(){vec2 u=gl_FragCoord.xy/1e3;float v=0.;for(float i=0.;i<2e3;i++){if(i>=uI*2.)break;v+=sin(u.x*i+uT)*cos(u.y*i-uT);}gl_FragColor=vec4(sin(v),cos(v),.5,.4);}');
+gl.compileShader(fs);
+const prog = gl.createProgram();
+gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog); gl.useProgram(prog);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+const p = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(p); gl.vertexAttribPointer(p, 2, gl.FLOAT, false, 0, 0);
+const uI = gl.getUniformLocation(prog, 'uI'), uT = gl.getUniformLocation(prog, 'uT');
+
+const wBlob = new Blob([`
+  let run=0, r=[];
+  onmessage = e => {
+    if(e.data.c=='s'){ run=1; loop(e.data.i, e.data.r); }
+    else if(e.data.c=='u'){ self.i=e.data.i; self.r=e.data.r; }
+    else close();
+  };
+  function loop(i, rm){
+    self.i=i; self.r=rm;
+    (function step(){
+      if(!run) return;
+      for(let j=0, d=0; j<self.i*5e5; j++) d += Math.sqrt(j)*Math.tan(j);
+      if(self.r) try { r.push(new Float64Array(5e4*self.i).fill(1)); } catch(e){}
+      setTimeout(step, 0);
+    })();
+  }
+`], {type: 'application/javascript'});
+const wUrl = URL.createObjectURL(wBlob);
+
+function upd() {
+  const v = +document.getElementById('int').value;
+  document.getElementById('ival').innerText = v;
+  workers.forEach(w => w.postMessage({c:'u', i:v, r:document.getElementById('ram').checked}));
+}
+
+function run() {
+  if(active) return;
+  active = true; last = performance.now();
+  c.width = innerWidth; c.height = innerHeight; gl.viewport(0, 0, c.width, c.height);
+  if(document.getElementById('mc').checked) {
+    for(let i=0; i<cores; i++) {
+      const w = new Worker(wUrl);
+      w.postMessage({c:'s', i:+document.getElementById('int').value, r:document.getElementById('ram').checked});
+      workers.push(w);
+    }
+  }
+  id = requestAnimationFrame(loop);
+}
+
+function halt() {
+  active = false; cancelAnimationFrame(id);
+  workers.forEach(w => w.terminate()); workers = []; ram = [];
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  document.getElementById('fps').innerText = '--';
+  document.getElementById('ms').innerText = '-- ms';
+}
+
+function loop(now) {
+  if(!active) return;
+  const dt = now - last; last = now;
+  if(dt > 0) {
+    const f = 1000 / dt;
+    const col = f <= 2 ? '#ff3b30' : f <= 20 ? '#ffcc00' : '#4caf50';
+    const fEl = document.getElementById('fps'), mEl = document.getElementById('ms');
+    fEl.innerText = f < 10 ? f.toFixed(2) : f.toFixed(1); fEl.style.color = col;
+    mEl.innerText = dt.toFixed(1) + ' ms'; mEl.style.color = col;
+  }
+  const v = +document.getElementById('int').value;
+  if(document.getElementById('ram').checked) try { ram.push(new Float64Array(1e5*v).fill(1)); } catch(e){}
+  if(document.getElementById('cpu').checked) for(let i=0, d=0; i<v*1.2e6; i++) d += Math.sqrt(i)*Math.sin(i);
+  if(document.getElementById('gpu').checked) {
+    gl.uniform1f(uI, v); gl.uniform1f(uT, now*.001);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.finish();
+  }
+  id = requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
